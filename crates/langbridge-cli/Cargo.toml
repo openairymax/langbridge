@@ -1,0 +1,17 @@
+[package]
+name = "langbridge-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "langbridge"
+path = "src/main.rs"
+
+[dependencies]
+langbridge-core = { path = "../langbridge-core" }
+serde.workspace = true
+serde_json = { workspace = true, features = ["preserve_order"] }
+regex.workspace = true
+url.workspace = true
+ureq.workspace = true

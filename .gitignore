@@ -1,0 +1,25 @@
+# Rust 构建产物
+/target
+/dist
+
+# 日志
+logs
+*.log
+
+# 本机环境与密钥
+*.local
+.env
+.env.*
+*.pem
+*.key
+
+# 编辑器目录与文件
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

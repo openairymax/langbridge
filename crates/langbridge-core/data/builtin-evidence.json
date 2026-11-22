@@ -1,0 +1,284 @@
+{
+  "version": 2,
+  "generated_at": "2026-11-21T13:58:35.413Z",
+  "note": "按各模型公开 tokenizer 对同一组中英样本的真实计数；Qwen3-Max 未公开自身 tokenizer，用同系列 Qwen3-8B 代算。服务端计费口径可能仍有差异，可用 API 探测复核。",
+  "sample_set_sha256": "ab70869758cda5a5204040072a533ed41a4d10eabeeccf2db8c7cf75b466eec8",
+  "datasets": [
+    {
+      "model_id": "deepseek-reasoner",
+      "tokenizer": {
+        "name": "deepseek-ai/DeepSeek-R1",
+        "version": "56d4cbbb4d29",
+        "sha256": "ecb6f9fc369894346f0511f4074ca75cee5cd5f3b06d02f1ba35fcd39f8e121d",
+        "source": "https://hf-mirror.com/deepseek-ai/DeepSeek-R1/resolve/56d4cbbb4d29f4355bab4b9a39ccb717a14ad5ad/tokenizer.json",
+        "exact": true
+      },
+      "observations": [
+        {
+          "sample_id": "zh-N120",
+          "lang": "zh",
+          "n": 120,
+          "prompt_tokens": 214
+        },
+        {
+          "sample_id": "en-N120",
+          "lang": "en",
+          "n": 120,
+          "prompt_tokens": 245
+        },
+        {
+          "sample_id": "zh-N240",
+          "lang": "zh",
+          "n": 240,
+          "prompt_tokens": 399
+        },
+        {
+          "sample_id": "en-N240",
+          "lang": "en",
+          "n": 240,
+          "prompt_tokens": 454
+        },
+        {
+          "sample_id": "zh-N480",
+          "lang": "zh",
+          "n": 480,
+          "prompt_tokens": 769
+        },
+        {
+          "sample_id": "en-N480",
+          "lang": "en",
+          "n": 480,
+          "prompt_tokens": 872
+        }
+      ],
+      "samples": [
+        {
+          "sample_id": "zh-N120",
+          "lang": "zh",
+          "n": 120,
+          "sha256": "5e3906773b0bd56f91f28525a0b4424de34da08dec2003257702a51764dc84d6",
+          "prompt_tokens": 214
+        },
+        {
+          "sample_id": "en-N120",
+          "lang": "en",
+          "n": 120,
+          "sha256": "06dfe7a809513026d7380fc72c06d4b3875143cd494569659b7cf9e6cd7546b6",
+          "prompt_tokens": 245
+        },
+        {
+          "sample_id": "zh-N240",
+          "lang": "zh",
+          "n": 240,
+          "sha256": "d61a81a11b54704ec3e9affe457030092ad505b9e0cc830c63876adefbfa086c",
+          "prompt_tokens": 399
+        },
+        {
+          "sample_id": "en-N240",
+          "lang": "en",
+          "n": 240,
+          "sha256": "c5f5e4c4b8beeb62773b8b0c3e65ca733086f92840c1c88512e128bf61a8645c",
+          "prompt_tokens": 454
+        },
+        {
+          "sample_id": "zh-N480",
+          "lang": "zh",
+          "n": 480,
+          "sha256": "1f4b1440f8b4b98e377f21cc5ae17fa4442d6f8c1b59539b1c1fe0bb0aded124",
+          "prompt_tokens": 769
+        },
+        {
+          "sample_id": "en-N480",
+          "lang": "en",
+          "n": 480,
+          "sha256": "8881f125624f5b4d8af0bf35e86a98d618c1050d2d8a5a742f2754801364bb3c",
+          "prompt_tokens": 872
+        }
+      ]
+    },
+    {
+      "model_id": "deepseek-chat",
+      "tokenizer": {
+        "name": "deepseek-ai/DeepSeek-V3",
+        "version": "e815299b0bcb",
+        "sha256": "621ac2e32d0dba658404412318818aaa8ce8cda492e59830109d8da6b517fb41",
+        "source": "https://hf-mirror.com/deepseek-ai/DeepSeek-V3/resolve/e815299b0bcbac849fa540c768ef21845365c9eb/tokenizer.json",
+        "exact": true
+      },
+      "observations": [
+        {
+          "sample_id": "zh-N120",
+          "lang": "zh",
+          "n": 120,
+          "prompt_tokens": 214
+        },
+        {
+          "sample_id": "en-N120",
+          "lang": "en",
+          "n": 120,
+          "prompt_tokens": 245
+        },
+        {
+          "sample_id": "zh-N240",
+          "lang": "zh",
+          "n": 240,
+          "prompt_tokens": 399
+        },
+        {
+          "sample_id": "en-N240",
+          "lang": "en",
+          "n": 240,
+          "prompt_tokens": 454
+        },
+        {
+          "sample_id": "zh-N480",
+          "lang": "zh",
+          "n": 480,
+          "prompt_tokens": 769
+        },
+        {
+          "sample_id": "en-N480",
+          "lang": "en",
+          "n": 480,
+          "prompt_tokens": 872
+        }
+      ],
+      "samples": [
+        {
+          "sample_id": "zh-N120",
+          "lang": "zh",
+          "n": 120,
+          "sha256": "5e3906773b0bd56f91f28525a0b4424de34da08dec2003257702a51764dc84d6",
+          "prompt_tokens": 214
+        },
+        {
+          "sample_id": "en-N120",
+          "lang": "en",
+          "n": 120,
+          "sha256": "06dfe7a809513026d7380fc72c06d4b3875143cd494569659b7cf9e6cd7546b6",
+          "prompt_tokens": 245
+        },
+        {
+          "sample_id": "zh-N240",
+          "lang": "zh",
+          "n": 240,
+          "sha256": "d61a81a11b54704ec3e9affe457030092ad505b9e0cc830c63876adefbfa086c",
+          "prompt_tokens": 399
+        },
+        {
+          "sample_id": "en-N240",
+          "lang": "en",
+          "n": 240,
+          "sha256": "c5f5e4c4b8beeb62773b8b0c3e65ca733086f92840c1c88512e128bf61a8645c",
+          "prompt_tokens": 454
+        },
+        {
+          "sample_id": "zh-N480",
+          "lang": "zh",
+          "n": 480,
+          "sha256": "1f4b1440f8b4b98e377f21cc5ae17fa4442d6f8c1b59539b1c1fe0bb0aded124",
+          "prompt_tokens": 769
+        },
+        {
+          "sample_id": "en-N480",
+          "lang": "en",
+          "n": 480,
+          "sha256": "8881f125624f5b4d8af0bf35e86a98d618c1050d2d8a5a742f2754801364bb3c",
+          "prompt_tokens": 872
+        }
+      ]
+    },
+    {
+      "model_id": "qwen3-max",
+      "tokenizer": {
+        "name": "Qwen/Qwen3-8B",
+        "version": "b968826d9c46",
+        "sha256": "aeb13307a71acd8fe81861d94ad54ab689df773318809eed3cbe794b4492dae4",
+        "source": "https://hf-mirror.com/Qwen/Qwen3-8B/resolve/b968826d9c46dd6066d109eabc6255188de91218/tokenizer.json",
+        "exact": false
+      },
+      "observations": [
+        {
+          "sample_id": "zh-N120",
+          "lang": "zh",
+          "n": 120,
+          "prompt_tokens": 228
+        },
+        {
+          "sample_id": "en-N120",
+          "lang": "en",
+          "n": 120,
+          "prompt_tokens": 244
+        },
+        {
+          "sample_id": "zh-N240",
+          "lang": "zh",
+          "n": 240,
+          "prompt_tokens": 426
+        },
+        {
+          "sample_id": "en-N240",
+          "lang": "en",
+          "n": 240,
+          "prompt_tokens": 452
+        },
+        {
+          "sample_id": "zh-N480",
+          "lang": "zh",
+          "n": 480,
+          "prompt_tokens": 822
+        },
+        {
+          "sample_id": "en-N480",
+          "lang": "en",
+          "n": 480,
+          "prompt_tokens": 868
+        }
+      ],
+      "samples": [
+        {
+          "sample_id": "zh-N120",
+          "lang": "zh",
+          "n": 120,
+          "sha256": "5e3906773b0bd56f91f28525a0b4424de34da08dec2003257702a51764dc84d6",
+          "prompt_tokens": 228
+        },
+        {
+          "sample_id": "en-N120",
+          "lang": "en",
+          "n": 120,
+          "sha256": "06dfe7a809513026d7380fc72c06d4b3875143cd494569659b7cf9e6cd7546b6",
+          "prompt_tokens": 244
+        },
+        {
+          "sample_id": "zh-N240",
+          "lang": "zh",
+          "n": 240,
+          "sha256": "d61a81a11b54704ec3e9affe457030092ad505b9e0cc830c63876adefbfa086c",
+          "prompt_tokens": 426
+        },
+        {
+          "sample_id": "en-N240",
+          "lang": "en",
+          "n": 240,
+          "sha256": "c5f5e4c4b8beeb62773b8b0c3e65ca733086f92840c1c88512e128bf61a8645c",
+          "prompt_tokens": 452
+        },
+        {
+          "sample_id": "zh-N480",
+          "lang": "zh",
+          "n": 480,
+          "sha256": "1f4b1440f8b4b98e377f21cc5ae17fa4442d6f8c1b59539b1c1fe0bb0aded124",
+          "prompt_tokens": 822
+        },
+        {
+          "sample_id": "en-N480",
+          "lang": "en",
+          "n": 480,
+          "sha256": "8881f125624f5b4d8af0bf35e86a98d618c1050d2d8a5a742f2754801364bb3c",
+          "prompt_tokens": 868
+        }
+      ]
+    }
+  ]
+}

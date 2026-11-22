@@ -1,0 +1,15 @@
+[package]
+name = "langbridge-core"
+description = "推理语言网关的纯引擎：信号、校准、路由、收益、注入与后处理"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true
+url.workspace = true
+
+[features]
+default = []
