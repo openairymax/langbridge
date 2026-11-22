@@ -35,8 +35,30 @@ pub fn ApiProbe() -> impl IntoView {
     let missing = RwSignal::new(None::<&'static str>);
     let checking = RwSignal::new(false);
     let check = RwSignal::new(None::<ConnectionCheck>);
+    let check_seq = RwSignal::new(0u32);
 
     let running = move || state().calibration.status == CalibrationStatus::Running;
+
+    // 配置一变，旧的连接结果立刻作废，避免「连接正常」挂在新服务商上。
+    let invalidate_check = move || {
+        check_seq.update(|seq| *seq = seq.wrapping_add(1));
+        check.set(None);
+        checking.set(false);
+        missing.set(None);
+    };
+
+    // 顶部切换模型后，探测区的模型与连接状态跟着同步。
+    let global_model = Memo::new(move |_| state().model_id);
+    let last_model = RwSignal::new(global_model.get_untracked());
+    Effect::new(move |_| {
+        let id = global_model.get();
+        if id == last_model.get_untracked() {
+            return;
+        }
+        last_model.set(id.clone());
+        model_id.set(id);
+        invalidate_check();
+    });
 
     let on_provider = move |ev: leptos::ev::Event| {
         let name = ev
@@ -44,12 +66,18 @@ pub fn ApiProbe() -> impl IntoView {
             .and_then(|t| t.dyn_into::<web_sys::HtmlSelectElement>().ok())
             .map(|el| el.value())
             .unwrap_or_default();
+        // 选「自定义」时展开地址与模型，否则下拉会立刻弹回上一个服务商。
+        if name == PROBE.provider_custom {
+            endpoint_open.set(true);
+            invalidate_check();
+            return;
+        }
         let Some(preset) = PROBE.presets.iter().find(|p| p.name == name) else {
             return;
         };
         ctx.set_probe_base_url(preset.base_url.to_string());
         model_id.set(preset.model_id.to_string());
-        missing.set(None);
+        invalidate_check();
     };
 
     let on_endpoint_toggle = move |_| endpoint_open.update(|open| *open = !*open);
@@ -67,8 +95,7 @@ pub fn ApiProbe() -> impl IntoView {
             missing.set(Some(field));
             return;
         }
-        missing.set(None);
-        check.set(None);
+        invalidate_check();
         ctx.calibrate_api(base, key, model);
     };
 
@@ -80,24 +107,29 @@ pub fn ApiProbe() -> impl IntoView {
             missing.set(Some(field));
             return;
         }
-        missing.set(None);
+        invalidate_check();
+        let seq = check_seq.get_untracked();
         checking.set(true);
-        check.set(None);
         let ctx = ctx;
         wasm_bindgen_futures::spawn_local(async move {
             let result = ctx.check_connection_async(base, key, model).await;
-            check.set(Some(result));
-            checking.set(false);
+            // 期间改过配置就丢弃这次结果，避免旧连接状态覆盖新配置。
+            if check_seq.get_untracked() == seq {
+                check.set(Some(result));
+                checking.set(false);
+            }
         });
     };
 
-    let source_label = move || {
-        let measured = state()
-            .profile
-            .as_ref()
-            .map(|p| p.measurement.method == langbridge_core::types::ProfileSource::ApiProbe)
-            .unwrap_or(false);
-        if measured { PROBE.source_api } else { PROBE.source_builtin }
+    let source_label = move || match state().profile {
+        None => PROBE.source_none,
+        Some(profile)
+            if profile.measurement.method
+                == langbridge_core::types::ProfileSource::ApiProbe =>
+        {
+            PROBE.source_api
+        }
+        Some(_) => PROBE.source_builtin,
     };
 
     // 分步状态：1 选服务商，2 填 Key，3 测连接，4 可测量，5 已完成。
@@ -206,7 +238,7 @@ pub fn ApiProbe() -> impl IntoView {
                             prop:value=move || api_key.get()
                             on:input=move |ev| {
                                 api_key.set(event_target_value(&ev));
-                                missing.set(None);
+                                invalidate_check();
                             }
                         />
                     </label>
@@ -274,7 +306,10 @@ pub fn ApiProbe() -> impl IntoView {
                         <input
                             placeholder=PROBE.base_url_placeholder
                             prop:value=move || base_url()
-                            on:input=move |ev| ctx.set_probe_base_url(event_target_value(&ev))
+                            on:input=move |ev| {
+                                ctx.set_probe_base_url(event_target_value(&ev));
+                                invalidate_check();
+                            }
                         />
                     </label>
                     <label>
@@ -282,7 +317,10 @@ pub fn ApiProbe() -> impl IntoView {
                         <input
                             placeholder="deepseek-reasoner"
                             prop:value=move || model_id.get()
-                            on:input=move |ev| model_id.set(event_target_value(&ev))
+                            on:input=move |ev| {
+                                model_id.set(event_target_value(&ev));
+                                invalidate_check();
+                            }
                         />
                     </label>
                 </div>
@@ -409,9 +447,7 @@ pub fn ApiProbe() -> impl IntoView {
                                     })}
                             </div>
                             <p class="probe-status-text">{PROBE.compare_updated}</p>
-                            <p class="probe-status-hint">
-                                {format!("{}，左上角模型列表可直接切回。", FLOW.probe_saved)}
-                            </p>
+                            <p class="probe-status-hint">{FLOW.probe_saved}</p>
                         </div>
                     }
                         .into_any()

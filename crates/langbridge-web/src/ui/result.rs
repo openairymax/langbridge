@@ -97,8 +97,9 @@ fn FilledResult() -> impl IntoView {
     let story = move || savings_story(&evaluation());
     let badge = move || applicability(&evaluation());
     let suffix = move || prompt_suffix(&evaluation().routing);
-    let copied = RwSignal::new(false);
-    let copied_suffix = RwSignal::new(false);
+    // 0 待复制，1 已复制，2 复制失败。
+    let copied = RwSignal::new(0u8);
+    let copied_suffix = RwSignal::new(0u8);
 
     let copy_all = {
         move |_| {
@@ -109,9 +110,9 @@ fn FilledResult() -> impl IntoView {
             crate::io::spawn_copy(
                 text,
                 Some(std::rc::Rc::new(move |ok: bool| {
+                    copied.set(if ok { 1 } else { 2 });
                     if ok {
-                        copied.set(true);
-                        set_timeout(move || copied.set(false), 1600);
+                        set_timeout(move || copied.set(0), 1600);
                     }
                 })),
             );
@@ -199,7 +200,11 @@ fn FilledResult() -> impl IntoView {
 
             <div class="result-actions">
                 <button type="button" class="btn btn-sm copy-btn" on:click=copy_all>
-                    {move || if copied.get() { RESULT.copied } else { RESULT.copy }}
+                    {move || match copied.get() {
+                        1 => RESULT.copied,
+                        2 => RESULT.copy_failed,
+                        _ => RESULT.copy,
+                    }}
                 </button>
                 <button type="button" class="btn btn-sm btn-ghost" on:click=download>
                     {RESULT.download}
@@ -218,15 +223,19 @@ fn FilledResult() -> impl IntoView {
                             crate::io::spawn_copy(
                                 text,
                                 Some(std::rc::Rc::new(move |ok: bool| {
+                                    copied_suffix.set(if ok { 1 } else { 2 });
                                     if ok {
-                                        copied_suffix.set(true);
-                                        set_timeout(move || copied_suffix.set(false), 1600);
+                                        set_timeout(move || copied_suffix.set(0), 1600);
                                     }
                                 })),
                             );
                         }
                     >
-                        {move || if copied_suffix.get() { UI.copied } else { SUFFIX.copy }}
+                        {move || match copied_suffix.get() {
+                            1 => UI.copied,
+                            2 => UI.copy_failed,
+                            _ => SUFFIX.copy,
+                        }}
                     </button>
                 </div>
                 <code class="suffix-text">{move || suffix()}</code>

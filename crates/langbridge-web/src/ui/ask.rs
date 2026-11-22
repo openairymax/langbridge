@@ -56,6 +56,20 @@ pub fn AskCard() -> impl IntoView {
         }
     });
 
+    // 当前模型不在任何列表里时，自动露出输入框，避免下拉停在第一个选项造成错位。
+    let model_key = Memo::new(move |_| {
+        let state = ctx.state.get();
+        (state.model_id.clone(), state.measured.len())
+    });
+    Effect::new(move |_| {
+        let (id, _) = model_key.get();
+        let listed = is_known(&id) || measured().iter().any(|item| item.id == id);
+        if !listed {
+            custom_mode.set(true);
+            custom_text.set(id);
+        }
+    });
+
     // 自定义模型提交：只在真正变化时触发一次重算。
     let commit_custom = move || {
         let value = custom_text.get_untracked().trim().to_string();
@@ -85,9 +99,22 @@ pub fn AskCard() -> impl IntoView {
     let note = move || model_note(&ctx.evaluation());
     let running = move || ctx.state.get().calibration.status == CalibrationStatus::Running;
 
+    // 按钮文案与动作保持一致：内置画像重载参考，实测画像和无画像去探测区。
     let calibrate = move |_| {
-        let id = ctx.state.get_untracked().model_id;
-        ctx.calibrate(Some(id));
+        let state = ctx.state.get_untracked();
+        let api_profile = state
+            .profile
+            .as_ref()
+            .map(|profile| {
+                profile.measurement.method
+                    == langbridge_core::types::ProfileSource::ApiProbe
+            })
+            .unwrap_or(false);
+        if !api_profile && has_evidence(&state.model_id) {
+            ctx.calibrate(Some(state.model_id));
+        } else {
+            crate::io::scroll_to("api-probe");
+        }
     };
 
     // 一键示例放在输入区，首屏就能点到；点完在单列布局下自动带到结论。

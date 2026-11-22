@@ -487,8 +487,17 @@ pub fn load_measured() -> Vec<MeasuredEntry> {
     let Ok(mut list) = serde_json::from_str::<Vec<MeasuredEntry>>(&raw) else {
         return Vec::new();
     };
+    // 清单只保留确实存在实测画像的条目：画像被删除或存储失败时不留幽灵选项。
     list.retain(|entry| {
-        !entry.id.is_empty() && entry.ratio.is_finite() && entry.ratio > 0.0
+        !entry.id.is_empty()
+            && entry.ratio.is_finite()
+            && entry.ratio > 0.0
+            && load_profile(&entry.id)
+                .map(|profile| {
+                    profile.measurement.method
+                        == langbridge_core::types::ProfileSource::ApiProbe
+                })
+                .unwrap_or(false)
     });
     list.truncate(MEASURED_LIMIT);
     list
@@ -574,7 +583,10 @@ impl AppCtx {
             if id != self.state.get_untracked().model_id {
                 self.set_model(id.clone());
             }
-            self.calibrate(Some(id));
+            // 已有画像时尊重已有测量结果，不拿内置参考覆盖。
+            if load_profile(&id).is_none() {
+                self.calibrate(Some(id));
+            }
         }
     }
 
@@ -590,7 +602,12 @@ impl AppCtx {
         if model_id != self.state.get_untracked().model_id {
             self.set_model(model_id.clone());
         }
-        self.calibrate(Some(model_id));
+        // 只有没有画像且确有内置证据时才载入参考，避免覆盖已有实测结果。
+        if load_profile(&model_id).is_none()
+            && langbridge_core::evidence::has_evidence(&model_id)
+        {
+            self.calibrate(Some(model_id));
+        }
     }
 
     pub fn set_probe_base_url(&self, value: String) {
@@ -667,6 +684,12 @@ impl AppCtx {
             let log_seq = Rc::clone(&log_seq);
             Rc::new(move |event: ProbeEvent| {
                 if current_generation() != target_generation {
+                    return;
+                }
+                // 用户取消后不再接收迟到的步骤事件，避免红色失败行。
+                if state_signal.get_untracked().calibration.status
+                    != CalibrationStatus::Running
+                {
                     return;
                 }
                 match event {
@@ -796,6 +819,16 @@ impl AppCtx {
                             ProbeLogStatus::Info,
                             PROBE.log_cancelled(done, total),
                         );
+                        // 取消是用户主动操作，回到待机而不是红色错误态。
+                        state_signal.update(|s| {
+                            s.calibration.status = CalibrationStatus::Idle;
+                            s.calibration.progress = 0.0;
+                            s.calibration.step = None;
+                            s.calibration.error = None;
+                            s.calibration.hint = None;
+                            s.calibration.target_model_id = None;
+                        });
+                        return;
                     }
                     let hint = PROBE
                         .hint(&crate::probe::code_str(error.code))
@@ -843,6 +876,9 @@ impl AppCtx {
     }
 
     pub fn import_profile(&self, text: &str) {
+        // 导入会替换画像，先让正在跑的探测失效，避免迟到结果覆盖导入内容。
+        bump_generation();
+        abort_probe();
         let parsed = parse_profile_file(text, langbridge_core::now_ms());
         if !parsed.ok || parsed.profile.is_none() {
             self.state.update(|s| s.import_errors = Some(parsed.errors));
@@ -861,6 +897,7 @@ impl AppCtx {
             };
             s.import_errors = None;
             s.migrated = parsed.migrated;
+            s.r_override = None;
             s.storage_warning = if saved {
                 None
             } else {
@@ -872,6 +909,9 @@ impl AppCtx {
     }
 
     pub fn reset_profile(&self) {
+        // 删除同样要终止进行中的探测，否则结果会在删除后写回。
+        bump_generation();
+        abort_probe();
         let current = self.state.get_untracked();
         let model_id = current
             .profile
@@ -881,6 +921,8 @@ impl AppCtx {
         clear_profile(&model_id);
         self.state.update(|s| {
             s.profile = None;
+            s.r_override = None;
+            s.storage_warning = None;
             s.calibration = CalibrationState::default();
             s.migrated = false;
             s.measured = load_measured();
@@ -899,20 +941,23 @@ fn rerun_diff(prev: &CalibrationResult, next: &CalibrationResult) -> RerunDiff {
 
 fn apply_success(state: RwSignal<AppState>, profile: ModelProfile, rerun: Option<RerunDiff>) {
     let model_id = profile.model.model_id.clone();
+    // 先确认结果属于本次探测目标，再写存储，避免迟到的结果留下幽灵画像。
+    let target_ok = state
+        .get_untracked()
+        .calibration
+        .target_model_id
+        .as_ref()
+        .map(|target| target == &model_id)
+        .unwrap_or(false);
+    if !target_ok {
+        return;
+    }
     let saved = save_profile(&profile);
     state.update(|s| {
-        // 结果必须属于本次探测的目标模型；切换后迟到的结果直接丢弃。
-        let target_ok = s
-            .calibration
-            .target_model_id
-            .as_ref()
-            .map(|target| target == &model_id)
-            .unwrap_or(false);
-        if !target_ok {
-            return;
-        }
         s.profile = Some(profile);
         s.model_id = model_id;
+        // 新画像生效后清掉手动比值，避免旧试算值遮住真实测量结果。
+        s.r_override = None;
         s.storage_warning = if saved {
             None
         } else {

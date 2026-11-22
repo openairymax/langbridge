@@ -4,7 +4,7 @@
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
 
-use langbridge_core::evidence::{evidence_meta, list_evidence_models};
+use langbridge_core::evidence::{evidence_meta, has_evidence, list_evidence_models};
 use langbridge_core::guard::DRIFT_THRESHOLD;
 use langbridge_core::profiles::get_model;
 use langbridge_core::profile_store::{profile_file_name, serialize_profile};
@@ -74,9 +74,20 @@ fn CalibrationFold() -> impl IntoView {
                                 <div class="cal-empty">
                                     <p class="muted small">{FLOW.cal_no_data}</p>
                                     <div class="cal-empty-actions">
-                                        <button type="button" class="btn btn-sm" on:click=load_builtin>
-                                            {CAL.badge_builtin}
-                                        </button>
+                                        {move || {
+                                            has_evidence(&evaluation().model.model_id)
+                                                .then(|| {
+                                                    view! {
+                                                        <button
+                                                            type="button"
+                                                            class="btn btn-sm"
+                                                            on:click=load_builtin
+                                                        >
+                                                            {CAL.badge_builtin}
+                                                        </button>
+                                                    }
+                                                })
+                                        }}
                                         <button
                                             type="button"
                                             class="btn btn-ghost btn-sm"
@@ -329,18 +340,36 @@ fn EvidenceFold() -> impl IntoView {
         let Some(file) = input.files().and_then(|files| files.get(0)) else {
             return;
         };
+        // 清空选择框，同一个文件可以再次导入。
+        input.set_value("");
         let ctx = ctx;
         wasm_bindgen_futures::spawn_local(async move {
             match crate::io::read_file_text(&file).await {
-                Ok(text) => ctx.import_profile(&text),
+                Ok(text) => {
+                    ctx.import_profile(&text);
+                    crate::io::reveal_verdict_if_stacked();
+                }
                 Err(_) => ctx.set_storage_warning(Some(PROFILE.read_fail.to_string())),
             }
         });
     };
 
+    // 删除是两步确认，且确认只对当前模型有效，切换模型后自动失效。
+    let confirm_delete = RwSignal::new(None::<String>);
     let reset = move |_| {
-        ctx.reset_profile();
+        let state = ctx.state.get_untracked();
+        if state.profile.is_none() {
+            return;
+        }
+        if confirm_delete.get_untracked().as_deref() == Some(state.model_id.as_str()) {
+            ctx.reset_profile();
+            confirm_delete.set(None);
+            return;
+        }
+        confirm_delete.set(Some(state.model_id));
+        gloo_timers::callback::Timeout::new(4_000, move || confirm_delete.set(None)).forget();
     };
+    let has_profile = move || ctx.state.get().profile.is_some();
 
     let show_raw = move || ctx.state.get().show_raw;
     let canonical = move || {
@@ -429,15 +458,32 @@ fn EvidenceFold() -> impl IntoView {
                 <p class="group-label">{FLOW.evidence_groups[4]}</p>
                 <p class="muted small">{FLOW.profile_note}</p>
                 <div class="profile-actions">
-                    <button type="button" class="btn btn-sm" on:click=export>
+                    <button
+                        type="button"
+                        class="btn btn-sm"
+                        disabled=move || !has_profile()
+                        on:click=export
+                    >
                         "导出当前画像"
                     </button>
                     <label class="btn btn-sm btn-ghost file-label">
                         "导入画像"
                         <input type="file" accept=".json,application/json" on:change=import />
                     </label>
-                    <button type="button" class="btn btn-sm btn-ghost" on:click=reset>
-                        "删除画像"
+                    <button
+                        type="button"
+                        class="btn btn-sm btn-ghost"
+                        disabled=move || !has_profile()
+                        on:click=reset
+                    >
+                        {move || {
+                            let id = ctx.state.get().model_id;
+                            if confirm_delete.get().as_deref() == Some(id.as_str()) {
+                                "再点一次确认删除"
+                            } else {
+                                "删除画像"
+                            }
+                        }}
                     </button>
                 </div>
 
@@ -498,18 +544,26 @@ fn AdvancedFold() -> impl IntoView {
     let evaluation = move || ctx.evaluation();
     let streaming = move || ctx.state.get().streaming;
     let injection = move || evaluation().injection;
-    let copied = RwSignal::new(false);
+    // 0 待复制，1 已复制，2 复制失败。
+    let copy_state = RwSignal::new(0u8);
 
     let copy_prompt = move |_| {
         let Some(plan) = injection() else { return; };
         if plan.system_prompt.trim().is_empty() {
             return;
         }
-        copied.set(false);
-        let hook = Some(std::rc::Rc::new(move |ok: bool| copied.set(ok))
-            as std::rc::Rc<dyn Fn(bool)>);
+        copy_state.set(0);
+        let hook = Some(std::rc::Rc::new(move |ok: bool| {
+            copy_state.set(if ok { 1 } else { 2 })
+        }) as std::rc::Rc<dyn Fn(bool)>);
         crate::io::spawn_copy(plan.system_prompt.clone(), hook);
     };
+
+    // 提示内容变了，复制状态回到「待复制」，避免旧的成功字样留在新提示上。
+    Effect::new(move |_| {
+        injection();
+        copy_state.set(0);
+    });
 
     view! {
         <details class="fold" id="fold-advanced">
@@ -529,14 +583,21 @@ fn AdvancedFold() -> impl IntoView {
                                             InjectionState::Injected => "已注入到 system",
                                             InjectionState::Appended => "追加到提示词末尾",
                                             InjectionState::SkippedConflict => "已有语言约定，跳过注入",
-                                            InjectionState::Disabled => "流式模式，不注入标签",
+                                            InjectionState::Disabled => "本次不注入",
+                                        };
+                                        let detail = if plan.system_prompt.trim().is_empty() {
+                                            plan.reason.clone()
+                                        } else {
+                                            format!(
+                                                "目标语言 {}，提示自身约 {} Token",
+                                                lang_text(plan.target_lang),
+                                                plan.prompt_tokens.round(),
+                                            )
                                         };
                                         view! {
                                             <p class="inject-current" data-testid="inject-current">
                                                 <span class="chip">{state}</span>
-                                                <span class="muted small">
-                                                    {format!("目标语言 {}，提示自身约 {} Token", lang_text(plan.target_lang), plan.prompt_tokens.round())}
-                                                </span>
+                                                <span class="muted small">{detail}</span>
                                             </p>
                                         }
                                     })
@@ -552,19 +613,29 @@ fn AdvancedFold() -> impl IntoView {
                             {move || {
                                 injection()
                                     .map(|plan| {
-                                        view! {
-                                            <div class="inject-copy">
-                                                <code class="code-line">{plan.system_prompt}</code>
-                                                <button
-                                                    type="button"
-                                                    class="btn btn-sm copy-btn"
-                                                    on:click=copy_prompt
-                                                >
-                                                    {move || {
-                                                        if copied.get() { FLOW.inject_copied } else { FLOW.inject_copy }
-                                                    }}
-                                                </button>
-                                            </div>
+                                        if plan.system_prompt.trim().is_empty() {
+                                            view! {
+                                                <p class="notice notice-warn">{plan.reason}</p>
+                                            }
+                                                .into_any()
+                                        } else {
+                                            view! {
+                                                <div class="inject-copy">
+                                                    <code class="code-line">{plan.system_prompt}</code>
+                                                    <button
+                                                        type="button"
+                                                        class="btn btn-sm copy-btn"
+                                                        on:click=copy_prompt
+                                                    >
+                                                        {move || match copy_state.get() {
+                                                            1 => FLOW.inject_copied,
+                                                            2 => FLOW.inject_copy_fail,
+                                                            _ => FLOW.inject_copy,
+                                                        }}
+                                                    </button>
+                                                </div>
+                                            }
+                                                .into_any()
                                         }
                                     })
                             }}

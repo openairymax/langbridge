@@ -4,7 +4,9 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Blob, BlobPropertyBag, File, FileReader, HtmlAnchorElement, Url};
+use web_sys::{
+    Blob, BlobPropertyBag, File, FileReader, HtmlAnchorElement, HtmlTextAreaElement, Url,
+};
 
 pub fn window() -> Option<web_sys::Window> {
     web_sys::window()
@@ -41,7 +43,39 @@ pub fn remove_item(key: &str) {
     }
 }
 
-/// 与 TS `navigator.clipboard.writeText` 对齐；不支持的浏览器返回 false。
+/// 剪贴板不可用时的同步兜底：临时 textarea + execCommand。
+fn copy_text_legacy(text: &str) -> bool {
+    let Some(doc) = window().and_then(|win| win.document()) else {
+        return false;
+    };
+    let Some(body) = doc.body() else {
+        return false;
+    };
+    let Ok(element) = doc.create_element("textarea") else {
+        return false;
+    };
+    let Ok(area) = element.dyn_into::<HtmlTextAreaElement>() else {
+        return false;
+    };
+    area.set_value(text);
+    let _ = area.set_attribute("readonly", "");
+    let style = area.style();
+    let _ = style.set_property("position", "fixed");
+    let _ = style.set_property("left", "-9999px");
+    let _ = style.set_property("opacity", "0");
+    let _ = body.append_child(&area);
+    area.focus().ok();
+    area.select();
+    let ok = doc
+        .dyn_into::<web_sys::HtmlDocument>()
+        .ok()
+        .and_then(|html| html.exec_command("copy").ok())
+        .unwrap_or(false);
+    let _ = body.remove_child(&area);
+    ok
+}
+
+/// 优先用异步剪贴板，失败时回退到 execCommand；两条路都不通才返回 false。
 pub async fn copy_text(text: &str) -> bool {
     let Some(win) = window() else {
         return false;
@@ -49,7 +83,7 @@ pub async fn copy_text(text: &str) -> bool {
     let clipboard = win.navigator().clipboard();
     match JsFuture::from(clipboard.write_text(text)).await {
         Ok(_) => true,
-        Err(_) => false,
+        Err(_) => copy_text_legacy(text),
     }
 }
 
