@@ -132,10 +132,7 @@ fn scheme_re() -> &'static Regex {
 }
 
 fn host_of(raw: &str) -> String {
-    let authority = raw
-        .split(['/', '?', '#'])
-        .next()
-        .unwrap_or("");
+    let authority = raw.split(['/', '?', '#']).next().unwrap_or("");
     if let Some(rest) = authority.strip_prefix('[') {
         return rest.split(']').next().unwrap_or("").to_ascii_lowercase();
     }
