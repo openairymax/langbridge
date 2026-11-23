@@ -1,4 +1,4 @@
-//! 规范化请求与决策遥测的构造。只做字段映射，不校验输入，调用方保证数据完整。
+//! 请求与决策遥测的规范化：只做字段映射，不校验输入，调用方保证数据完整。
 
 use crate::types::{
     CanonicalRequest, DecisionRecord, DecisionSummary, InjectionPlan, InjectionState, ProfileRef,
