@@ -130,5 +130,6 @@ cargo test --workspace
 
 - 源码仓库：<https://atomgit.com/openairymax/langbridge>
 - 在线体验：<https://langbridge.traesite.cn>
+- 许可证：Apache License 2.0，见 `LICENSE`
 
 OpenAirymax 开源极境
