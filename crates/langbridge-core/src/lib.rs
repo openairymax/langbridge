@@ -1,14 +1,7 @@
-//! LangBridge 核心引擎：纯 Rust、无平台依赖，可编译到 wasm32 与原生。
+//! LangBridge 核心引擎。纯 Rust，无平台依赖，可编译到 wasm32 与原生。
 //!
-//! 分层：
-//! - `signals`   信号提取（语言 / 任务 / 规模）
-//! - `calibrate` 差分校准与质量闸门
-//! - `profiles`  模型元数据与画像
-//! - `savings`   净收益与门槛
-//! - `router`    四层路由
-//! - `inject`    语言约束注入
-//! - `guard`     输出后处理
-//! - `canonical` 规范化数据与遥测
+//! 覆盖信号提取、校准、画像、净收益、路由、注入与输出后处理。
+//! 对平台的依赖仅限时间来源：wasm 由平台层写入，原生读取系统时钟。
 
 pub mod calibrate;
 pub mod canonical;
@@ -26,7 +19,7 @@ pub mod types;
 
 pub use types::*;
 
-/// 平台层注入的当前时间（Unix 毫秒）
+/// 当前 Unix 毫秒。wasm 目标读取平台层写入的时钟，原生目标读取系统时钟。
 pub fn now_ms() -> i64 {
     #[cfg(target_arch = "wasm32")]
     {
@@ -43,7 +36,7 @@ pub fn now_ms() -> i64 {
 
 #[cfg(target_arch = "wasm32")]
 fn js_now_ms() -> i64 {
-    // wasm 目标下由 web crate 在启动时写入时钟；未写入时返回 0（过期判定退化为“可用”）
+    // 时钟未写入时返回 0，过期判定因此不会触发
     CLOCK.with(|c| c.get())
 }
 
@@ -52,7 +45,7 @@ thread_local! {
     static CLOCK: std::cell::Cell<i64> = const { std::cell::Cell::new(0) };
 }
 
-/// 由 Web 层在每个请求前同步浏览器时间；原生目标直接用系统时钟，注入为空操作。
+/// 由平台层写入当前时间；原生目标忽略该值。
 pub fn set_now_ms(ms: i64) {
     #[cfg(target_arch = "wasm32")]
     CLOCK.with(|c| c.set(ms));

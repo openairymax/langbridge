@@ -1,6 +1,5 @@
-//! 全站文案层：组件不出现业务文案；结论句由测量数据与路由状态推导，数字全部来自引擎常量与数据。
-//!
-//! 对应 TypeScript 的 `src/content/copy.ts`。所有界面可见文案集中在此处，逐字保留中文与标点。
+//! 界面文案层：组件不内联业务文案，可见文本集中在这里。
+//! 结论句由评测结果与路由状态推导，数字取自引擎常量与画像，不在此处写死。
 
 use langbridge_core::calibrate::{LINEAR_MAX_DEVIATION, RECALIBRATE_EVERY};
 use langbridge_core::evidence::{evidence_meta, has_evidence, list_evidence_models, ProbeStep};
@@ -214,7 +213,7 @@ pub fn empty_builtin_hint() -> String {
 }
 
 /* ------------------------------------------------------------------ */
-/* 一键示例                                                           */
+/* 示例                                                               */
 /* ------------------------------------------------------------------ */
 
 pub struct DemoCopy {
@@ -231,7 +230,7 @@ pub fn demo_hint(row_text: &str) -> String {
     format!("载入示例，直接看结论：{}", row_text)
 }
 
-/// 内置参考表的一行：方向与倍数由 ratio 实算
+/// 内置参考表的一行，由 ratio 实算方向与倍数。
 pub fn builtin_row_text(ratio: f64) -> String {
     let zh_bigger = ratio >= 1.0;
     let multiple = if zh_bigger { ratio } else { 1.0 / ratio };
@@ -278,7 +277,7 @@ pub fn layer(layer: langbridge_core::types::RoutingLayer) -> &'static LayerCopy 
     }
 }
 
-/// 层状态词：由该层的执行结果推导
+/// 层状态词，按该层是否命中或终止返回。
 pub fn why_mark(step: Option<&RoutingStep>) -> &'static str {
     match step {
         Some(s) if s.hit => "起作用了",
@@ -298,7 +297,7 @@ fn decided_by_label(decided_by: DecidedBy) -> &'static str {
     }
 }
 
-/// 决策链页脚：决定者与回答语言由路由结果推导
+/// 决策链页脚，拼接决定者与回答语言。
 pub fn chain_foot(routing: &Routing) -> String {
     format!(
         "{}决定 · 回答用{}",
@@ -334,7 +333,7 @@ pub const SECTION: SectionCopy = SectionCopy {
 };
 
 /* ------------------------------------------------------------------ */
-/* 提示词末尾追加（产品核心：告诉模型用什么语言推理）                    */
+/* 提示词末尾追加                                                     */
 /* ------------------------------------------------------------------ */
 
 pub struct SuffixCopy {
@@ -349,7 +348,7 @@ pub const SUFFIX: SuffixCopy = SuffixCopy {
     copy: "复制这句",
 };
 
-/// 由路由结果推导末尾指令：思考语言 = 本次决策，回答语言跟随用户输入
+/// 生成追加到提示词末尾的指令，思考语言取路由决策，回答语言跟随输入。
 pub fn prompt_suffix(routing: &Routing) -> String {
     let think = lang_text(routing.decided_lang);
     let answer = lang_text(routing.output_lang);
@@ -463,7 +462,7 @@ impl UiCopy {
     }
 }
 
-/// 输入区按钮：文案由校准状态与数据来源推导
+/// 输入区按钮文案，按校准状态与画像来源选择。
 pub fn action_label(opts: &ActionLabelOpts) -> String {
     if opts.running {
         return UI.running.to_string();
@@ -557,7 +556,7 @@ fn injection_state_key(state: InjectionState) -> &'static str {
     }
 }
 
-/// 注入状态摘要
+/// 注入状态摘要。
 pub fn inject_text(injection: Option<&InjectionPlan>) -> String {
     match injection {
         Some(plan) => format!("{} · {}", injection_state_key(plan.state), plan.reason),
@@ -566,7 +565,7 @@ pub fn inject_text(injection: Option<&InjectionPlan>) -> String {
 }
 
 /* ------------------------------------------------------------------ */
-/* 模型行说明（builtin = 该模型公开 tokenizer 的真实计数，不是服务端账单） */
+/* 模型行说明（builtin 指按公开 tokenizer 计数，不是服务端账单）        */
 /* ------------------------------------------------------------------ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -738,7 +737,7 @@ pub struct RatioBarsView {
     pub aria: String,
 }
 
-/// 由观测数据实算：取最小档的计数对比
+/// 由观测数据生成比值条，取 N 最小的一档对比中英文计数。
 pub fn ratio_bars_view(cal: &CalibrationResult) -> Option<RatioBarsView> {
     if cal.observations.is_empty() {
         return None;
@@ -1169,7 +1168,7 @@ pub struct SaveLineParts {
     pub tail: String,
 }
 
-/// 结论卡的数字行：拆成纯文本段 + 加粗数字段，文案全部由 story 推导
+/// 结论卡的数字行，拆成前段与后段，中间的数字由调用方加粗显示。
 pub fn save_line_parts(story: &SavingsStory) -> Option<SaveLineParts> {
     match story {
         SavingsStory::Save {
@@ -1242,7 +1241,7 @@ pub fn result_ratio_text(ratio: Option<f64>) -> String {
     }
 }
 
-/// 结果卡数字行：数字全部来自引擎实算，过门槛才说「本次净省」；未过门槛只报可省多少与门槛
+/// 结果卡数字行。只有过门槛才报净省，未过门槛时给出可省额度与门槛。
 pub fn result_net_text(savings: Option<&SavingsResult>) -> String {
     let Some(s) = savings else {
         return format!("{} {}", RESULT.net_label, RESULT.not_applicable);
@@ -1265,7 +1264,7 @@ pub fn result_net_text(savings: Option<&SavingsResult>) -> String {
     format!("{} {} Token", RESULT.net_loss, js_num(s.net.abs()))
 }
 
-/// 可整段粘贴的纯文本结论
+/// 可整段复制的纯文本结论。
 pub fn result_summary_text(evaluation: &Evaluation, generated_at: &str) -> String {
     let verdict = verdict_copy(evaluation);
     let story = savings_story(evaluation);
@@ -1314,9 +1313,8 @@ pub fn r_auto_label(r: f64) -> String {
     format!("按这个问题估 {}", js_num(r))
 }
 
-/// 思考量手动快捷档。语义不同于引擎 TASK_BASE_R：那是按任务类型的基准思考量
-/// （还要乘模型系数才是 autoR，见 R_AUTO_LABEL 实时给出的值），且引擎未导出该常量，
-/// 这里取常见手动档位，实际结论仍以引擎实算的 R 为准。
+/// 思考量的手动快捷档位。引擎的 TASK_BASE_R 是按任务类型的基准值，还要乘模型系数
+/// 才得到自动估算的 R，且该常量未导出；这里只提供常见档位，结论仍以引擎实算为准。
 pub const R_PRESETS: [f64; 3] = [800.0, 1200.0, 3000.0];
 
 /* ------------------------------------------------------------------ */
@@ -1345,7 +1343,7 @@ pub struct Applicability {
     pub tone: Tone,
 }
 
-/// 适用性徽章：由画像状态与路由结果推导
+/// 适用性徽章，按画像状态与路由结果给出标签与色调。
 pub fn applicability(evaluation: &Evaluation) -> Applicability {
     let model = &evaluation.model;
     let routing = &evaluation.routing;
@@ -1429,7 +1427,7 @@ pub fn applicability(evaluation: &Evaluation) -> Applicability {
     }
 }
 
-/// 无 savings 时的说明：天数引用引擎常量
+/// 无 savings 时的说明，有效期天数取自引擎常量。
 pub fn savings_blocked_notice(evaluation: &Evaluation) -> String {
     let routing = &evaluation.routing;
     let status = &evaluation.profile_status;
@@ -1473,7 +1471,7 @@ pub fn savings_blocked_notice(evaluation: &Evaluation) -> String {
     "还没有可用的参考数据，算不出费用。先点上方「载入参考数据」。".to_string()
 }
 
-/// 门槛公式：数值来自画像 policy（或引擎默认常量），不写死在文案层
+/// 门槛公式文案。阈值取自画像 policy，缺省用引擎常量。
 pub fn threshold_text(evaluation: &Evaluation) -> String {
     let (tokens, pct) = match evaluation.profile.as_ref() {
         Some(p) => (p.policy.switch_threshold_tokens, p.policy.switch_threshold_pct),
@@ -1489,7 +1487,7 @@ pub fn threshold_text(evaluation: &Evaluation) -> String {
     )
 }
 
-/// 公式明细：全部数字取自 savings 与注入计划
+/// 费用公式明细，数字取自 savings 与注入计划。
 pub fn formula_lines(evaluation: &Evaluation) -> Vec<String> {
     let Some(s) = evaluation.savings.as_ref() else {
         return Vec::new();
@@ -1588,7 +1586,7 @@ fn delta_text(delta: f64, base: f64) -> String {
     format!("{}{}%", if delta > 0.0 { "+" } else { "" }, js_num(pct))
 }
 
-/// 三路对比行：同一任务、同一 R、同一 ratio 口径，数字全部实算
+/// 三路对比。三行使用同一任务、同一 R 与同一成本比口径。
 pub fn comparison_view(evaluation: &Evaluation) -> Option<ComparisonView> {
     let signals = &evaluation.signals;
     let routing = &evaluation.routing;
@@ -1665,7 +1663,7 @@ pub fn comparison_view(evaluation: &Evaluation) -> Option<ComparisonView> {
     })
 }
 
-/// 不可对比时的原因
+/// 不可对比时的原因。
 pub fn comparison_blocked_reason(evaluation: &Evaluation) -> String {
     let status = &evaluation.profile_status;
     let builtin = evaluation
@@ -1912,7 +1910,7 @@ pub struct EvidenceCopy {
 }
 
 impl EvidenceCopy {
-    /// 按 evidence_meta().tokenizers 实算：全部公开时直说「公开计数」，含同系列代算时标注
+    /// tokenizer 说明。全部为公开计数时直说，含同系列代算时在文案里标注。
     pub fn tokenizer_mixed(&self) -> &'static str {
         if evidence_meta()
             .tokenizers
@@ -1948,7 +1946,7 @@ pub const EVIDENCE: EvidenceCopy = EvidenceCopy {
     record_summary: "决策记录（DecisionRecord）",
 };
 
-/// 已知限制：覆盖模型数与 tokenizer 清单由数据实算
+/// 已知限制列表。覆盖模型数由调用方传入，tokenizer 清单取自证据元数据。
 pub fn limitations(covered_count: usize) -> Vec<String> {
     let meta = evidence_meta();
     let mut tokenizers: Vec<String> = Vec::new();
@@ -1982,7 +1980,7 @@ pub fn limitations(covered_count: usize) -> Vec<String> {
 }
 
 /* ------------------------------------------------------------------ */
-/* API 真实探测                                                        */
+/* API 探测                                                           */
 /* ------------------------------------------------------------------ */
 
 pub struct Preset {
@@ -2274,7 +2272,7 @@ pub const ADVANCED: AdvancedCopy = AdvancedCopy {
 };
 
 /* ------------------------------------------------------------------ */
-/* 校准状态徽章（EvidenceDetails 顶部数据版本由 meta 推导）              */
+/* 校准状态徽章                                                       */
 /* ------------------------------------------------------------------ */
 
 pub fn evidence_version_badge(version: u32) -> String {
@@ -2290,7 +2288,7 @@ pub fn evidence_generated_at() -> String {
 }
 
 /* ------------------------------------------------------------------ */
-/* 操作引导：把「这里是什么」改成「先做什么、再做什么」                 */
+/* 操作引导                                                           */
 /* ------------------------------------------------------------------ */
 
 pub struct FlowCopy {

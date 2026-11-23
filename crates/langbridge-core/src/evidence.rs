@@ -1,6 +1,6 @@
-//! 内置离线证据 + API 探测的纯逻辑部分。
-//! 网络请求由 Web（fetch）与 CLI（HTTP 客户端）各自发起，这里只负责：
-//! URL 归一化、鉴权头、状态码归类、载荷自适应、usage 解析与差分校准。
+//! 内置证据与 API 探测的纯逻辑部分。
+//! 网络请求由调用方发起，本模块只处理 URL 归一化、鉴权头、状态码归类、
+//! 载荷自适应、usage 解析与差分校准。
 
 use std::sync::OnceLock;
 
@@ -89,7 +89,7 @@ pub fn has_evidence(model_id: &str) -> bool {
     evidence().datasets.iter().any(|d| d.model_id == model_id)
 }
 
-/// 由内置证据得到校准结果（离线、零 Key、可复现）
+/// 由内置证据直接得到校准结果，不访问网络。
 pub fn calibrate_from_evidence(model_id: &str) -> Result<CalibrationResult, EngineError> {
     let dataset = evidence()
         .datasets
@@ -126,7 +126,7 @@ pub fn calibrate_from_evidence(model_id: &str) -> Result<CalibrationResult, Engi
     Ok(cal)
 }
 
-/* ---------------------------- URL 与鉴权 ---------------------------- */
+/* URL 与鉴权 */
 
 fn scheme_re() -> &'static Regex {
     static CELL: OnceLock<Regex> = OnceLock::new();
@@ -164,7 +164,7 @@ fn is_local_upstream_host(host: &str) -> bool {
     a == 10 || a == 127 || (a == 172 && (16..=31).contains(&b)) || (a == 192 && b == 168)
 }
 
-/// 归一化 Base URL：补协议、补 /v1、识别 ModelArts 与 Azure
+/// 归一化 Base URL：补协议与 /v1，识别 ModelArts 与 Azure。
 pub fn normalize_base(base_url: &str) -> String {
     let raw = base_url.trim();
     if raw.is_empty() {
@@ -258,7 +258,7 @@ pub fn request_target(base_url: &str, api_key: &str) -> Result<RequestTarget, En
     Ok(RequestTarget { url, headers })
 }
 
-/* ---------------------------- 错误归类 ---------------------------- */
+/* 错误归类 */
 
 pub fn classify_http(status: u16, server_message: &str) -> EngineError {
     let detail = if server_message.is_empty() {
@@ -351,7 +351,7 @@ fn rejected_param(text: &str) -> Option<&'static str> {
     None
 }
 
-/// 只调整当前正在使用的参数，避免互相拉扯
+/// 根据错误信息关闭被拒绝的参数，每次只调整一项。
 pub fn adapt_caps(message: &str, caps: &mut PayloadCaps) -> bool {
     let lower = message.to_ascii_lowercase();
     let Some(param) = rejected_param(&lower) else {
@@ -450,7 +450,7 @@ pub struct ParsedUsage {
     pub error_message: Option<String>,
 }
 
-/// 兼容标准 JSON 与忽略 stream:false 的 SSE 网关，并识别「HTTP 200 + error」
+/// 兼容标准 JSON 与忽略 stream:false 的 SSE 网关，并识别 HTTP 200 响应体中的 error。
 pub fn parse_usage(raw: &str) -> ParsedUsage {
     let trimmed = raw.trim().trim_start_matches('\u{feff}');
     let mut candidates: Vec<String> = vec![trimmed.to_string()];
@@ -507,7 +507,7 @@ pub struct ProbeStep {
     pub n: f64,
 }
 
-/// 固定的 6 步：1/2/4 三档 × 中英
+/// 固定 6 步：1、2、4 三档各测中英。
 pub fn probe_steps(base_n: f64) -> Vec<ProbeStep> {
     let total = SCALES.len() * 2;
     let mut steps = Vec::new();
@@ -526,12 +526,12 @@ pub fn probe_steps(base_n: f64) -> Vec<ProbeStep> {
     steps
 }
 
-/// 每步的请求文本
+/// 生成每一步使用的请求文本。
 pub fn step_sample(step: &ProbeStep, base_n: f64) -> String {
     build_sample(step.lang, (step.n / base_n) as u32)
 }
 
-/// 由探测观测生成校准结果
+/// 由探测观测生成校准结果。
 pub fn calibration_from_probe(
     observations: &[Observation],
     model_id: &str,

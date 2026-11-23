@@ -1,4 +1,7 @@
-// CLI 入口：命令分发、全局参数、退出码与统一错误出口
+//! CLI 入口：解析全局参数、分发子命令并统一退出码。
+//!
+//! 退出码约定：0 成功，1 参数或用法错误，2 数据不可用，3 上游或授权失败，
+//! 4 校验失败。未知命令与未知参数在分发前即被拒绝。
 
 mod args;
 mod commands;
@@ -23,8 +26,8 @@ const HELP: &str = "LangBridge CLI 1.0.0
   langbridge <command> [options]
 
 命令：
-  doctor                         环境与证据自检
-  calibrate --model <id>         校准并保存画像（默认 --method builtin，零 Key）
+  doctor                         环境与内置证据检查
+  calibrate --model <id>         校准并保存画像（默认 --method builtin，无需 API Key）
       --method builtin|api       （别名 --via）
       --n <120>                  基准语料规模，须为 120 的整数倍
       --rerun                    再测一次并与本地画像比较偏差
@@ -46,7 +49,7 @@ const HELP: &str = "LangBridge CLI 1.0.0
       --text <string> | --file <path> | stdin
       --streaming                只统计不改写
       例：langbridge guard --expect zh --text \"<thinking>…</thinking><answer>…</answer>\"
-  setup                          一键校准全部有证据的模型并写入本地画像（零 Key）
+  setup                          校准全部有证据的模型并写入本地画像（无需 API Key）
   profile [list|show|import|export|validate|remove|path]
       langbridge profile show deepseek-reasoner
       langbridge profile validate ./langbridge.profile.json

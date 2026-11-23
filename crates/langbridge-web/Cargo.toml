@@ -1,5 +1,6 @@
 [package]
 name = "langbridge-web"
+description = "推理语言网关的浏览器界面：Leptos 0.8 CSR、单一状态与本地测量"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

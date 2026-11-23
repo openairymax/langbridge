@@ -1,6 +1,5 @@
-//! 四层路由 + 未校准闸门。顺序不可换：
-//! L1 硬规则 → L2 模型能力 → L3 输入对齐 → L4 性价比闸门。
-//! 任何情况下未通过闸门都不输出成本结论。
+//! 四层路由：L1 硬规则、L2 模型能力、L3 输入对齐、L4 成本闸门。
+//! 层序不可调换。未通过成本闸门时不输出成本结论。
 
 use crate::calibrate::{calibration_usable, MIN_CONFIDENCE};
 use crate::inject::{build_injection_plan, build_system_prompt, has_language_conflict, InjectionInput, PromptOptions};
@@ -19,7 +18,7 @@ pub struct RouteInput<'a> {
     pub r: f64,
     pub streaming: bool,
     pub user_system_prompt: Option<&'a str>,
-    /// 当前时间（Unix 毫秒），由平台层注入，保证核心可测试且 wasm 友好
+    /// 当前时间（Unix 毫秒），由调用方传入，核心不直接读取平台时钟
     pub now_ms: i64,
 }
 
@@ -66,7 +65,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
     let model = input.model;
     let mut steps: Vec<RoutingStep> = Vec::new();
     let output_lang = signals.lang;
-    // 用户 system prompt 已规定语言时不会注入：冲突下不得保留任何收益结论
+    // 用户 system prompt 已规定语言时不注入，冲突下不保留收益结论
     let conflict = has_language_conflict(input.user_system_prompt);
 
     let finish = |steps: Vec<RoutingStep>,
@@ -97,7 +96,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             injection.state,
             InjectionState::Injected | InjectionState::Appended
         );
-        // 不变量：只有真正注入时才允许报告收益；冲突时注入开销不能被虚记为 0
+        // 只有实际注入时才报告收益；冲突时不能把注入开销记为 0
         let savings = if injection.state == InjectionState::SkippedConflict
             || (!injects && computed.as_ref().map(|s| s.switchable).unwrap_or(false))
         {
@@ -112,7 +111,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         }
     };
 
-    // L1 硬规则：文化 / 政策类任务强制中文推理
+    // L1 硬规则：文化、政策类任务强制中文推理
     if matches!(signals.task, crate::types::TaskType::Culture | crate::types::TaskType::Policy) {
         let label = if signals.task == crate::types::TaskType::Culture {
             "文化类（成语/典故/诗词等）"
@@ -139,7 +138,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         None,
     ));
 
-    // L2 模型能力：国产模型 + 代码/数学 → 中文推理
+    // L2 模型能力：Qwen / DeepSeek 系列处理代码或数学任务时使用中文推理
     if matches!(model.family, crate::types::Family::Qwen | crate::types::Family::Deepseek)
         && matches!(signals.task, crate::types::TaskType::Code | crate::types::TaskType::Math)
     {
@@ -170,7 +169,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         None,
     ));
 
-    // L3 输入对齐：输入英文且比值高于上限 → 英文；输入中文且低于下限 → 中文。
+    // L3 输入对齐：输入英文且比值高于上限时用英文，输入中文且低于下限时用中文。
     let native = input.profile.and_then(|p| p.model.native_lang).or(model.native_lang);
     let policy = policy_from_profile(input.profile);
     let usable = input
@@ -223,7 +222,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             steps.push(step(RoutingLayer::L4, false, "由 L3 终止，未评估成本", 0.0, true, None));
             return finish(steps, align_to, DecidedBy::L3, false, CostStatus::BlockedUncalibrated, None);
         }
-        // 成本基准是输入语言：跟随输入即默认行为，无需切换，也没有注入开销
+        // 成本基准是输入语言，跟随输入即默认行为，无需切换，也没有注入开销
         steps.push(step(RoutingLayer::L3, true, align_reason, 0.9, true, Some(align_to)));
         steps.push(step(RoutingLayer::L4, false, "由 L3 终止，未评估成本", 0.0, true, None));
         return finish(steps, align_to, DecidedBy::L3, false, CostStatus::Ok, None);
@@ -318,7 +317,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
 
     let cal = &profile.measurement;
     let now_ms = input.now_ms;
-    // 置信度是 calibration_usable 的条件之一：先单独拦截只为给出更具体的文案
+    // 置信度也是 calibration_usable 的条件；先单独拦截是为给出更具体的提示
     if cal.confidence < MIN_CONFIDENCE {
         steps.push(step(
             RoutingLayer::L4,
@@ -486,7 +485,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
     finish(steps, baseline, DecidedBy::L4, false, status, Some(savings))
 }
 
-/// 供 CLI 与代理捕获的统一入口
+/// CLI 与代理使用的统一入口。
 pub fn route_or_throw(input: &RouteInput<'_>) -> EngineResult<RouteResult> {
     if input.signals.input_chars == 0 {
         return Err(EngineError::new(ErrorCode::EmptyInput, "输入为空，无法提取信号"));

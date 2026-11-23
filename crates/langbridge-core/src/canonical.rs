@@ -1,4 +1,4 @@
-//! Canonical Data Format 与三阶段遥测。
+//! 规范化请求与决策遥测的构造。只做字段映射，不校验输入，调用方保证数据完整。
 
 use crate::types::{
     CanonicalRequest, DecisionRecord, DecisionSummary, InjectionPlan, InjectionState, ProfileRef,
@@ -39,7 +39,7 @@ pub struct CanonicalInput<'a> {
     pub created_at: String,
 }
 
-/// transformed_input 恒等于 raw_input（源设计 §3 契约）
+/// transformed_input 与 raw_input 相同：规范化不改写输入。
 pub fn build_canonical_request(input: CanonicalInput<'_>) -> CanonicalRequest {
     let telemetry = Telemetry {
         request_id: input.request_id.clone(),
@@ -104,7 +104,7 @@ pub fn build_decision_record(
     }
 }
 
-/// 脱敏摘要：不含原文 / Key / 响应正文
+/// 脱敏摘要，不含原文、Key 与响应正文。
 pub fn summarize_decision(
     model_id: &str,
     signals: &Signals,

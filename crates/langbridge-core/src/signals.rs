@@ -1,5 +1,5 @@
-//! Phase 1 信号提取：纯本地计算，零模型调用。
-//! 单位统一：中文按字符数，英文按字符数 / 4.5（平均词长）。
+//! 信号提取：纯本地计算，不调用模型。
+//! 质量单位统一：中文按字符数，英文按字符数除以 4.5。
 
 use std::sync::OnceLock;
 
@@ -7,7 +7,7 @@ use regex::Regex;
 
 use crate::types::{Lang, Signals, TaskType};
 
-/// 语言分析窗口：前 4000 个 UTF-16 单元（与 JS 字符串长度一致）
+/// 语言分析窗口：前 4000 个 UTF-16 编码单元。
 pub const ANALYSIS_WINDOW: usize = 4000;
 
 fn re(cell: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
@@ -29,7 +29,7 @@ lazy_re!(url_re, r"https?://\S+");
 lazy_re!(cjk_re, r"[\u{4e00}-\u{9fff}]");
 lazy_re!(latin_re, r"[a-zA-Z]");
 
-/// 按 UTF-16 单元截断（对齐 JS `slice`）
+/// 按 UTF-16 编码单元截断，不会切在多字节字符中间。
 pub fn slice_utf16(s: &str, max: usize) -> &str {
     let mut units = 0usize;
     for (idx, ch) in s.char_indices() {
@@ -42,7 +42,7 @@ pub fn slice_utf16(s: &str, max: usize) -> &str {
     s
 }
 
-/// JS 的 `String.length`：UTF-16 码元数
+/// UTF-16 编码单元数。
 pub fn utf16_len(s: &str) -> usize {
     s.encode_utf16().count()
 }
@@ -62,7 +62,7 @@ fn clamp(v: f64, lo: f64, hi: f64) -> f64 {
     v.max(lo).min(hi)
 }
 
-/// JS `Math.round`：正数四舍五入
+/// 四舍五入。负数按远离零方向取整。
 pub fn round_js(v: f64) -> f64 {
     v.round()
 }
@@ -247,7 +247,7 @@ pub fn detect_task(raw: &str) -> TaskDetection {
     }
 }
 
-/// 仅用于展示的输入 token 估算（界面需标注“估算”）
+/// 输入 token 的粗略估算，仅供展示。
 pub fn estimate_tokens(text: &str) -> u32 {
     let cjk_chars = count(text, cjk_re());
     let latin_chars = count(text, latin_re());
@@ -278,7 +278,7 @@ pub fn extract_signals(raw: &str, history: &str) -> Signals {
     }
 }
 
-/// 语言纯度：中文质量占比
+/// 语言纯度：中文质量在总质量中的占比。
 pub fn zh_purity(text: &str) -> f64 {
     let clean = strip_code(text);
     let cjk = count(&clean, cjk_re()) as f64;

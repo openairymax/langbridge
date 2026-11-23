@@ -1,6 +1,6 @@
-//! 输入卡：选模型、看当前画像、写问题、一键示例。
-//! 交互取舍：模型切换立即生效；自定义模型在失焦或回车时提交，避免每敲一个字就重算。
-//! 校准按钮的文案与动作由画像来源决定，不额外堆按钮。
+//! 输入卡：选择模型、查看当前画像、输入问题、载入示例。
+//! 模型切换立即生效；自定义模型在失焦或回车时提交，避免每次按键都重算。
+//! 校准按钮的文案与行为由画像来源决定。
 
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -41,7 +41,7 @@ pub fn AskCard() -> impl IntoView {
     let custom_mode = RwSignal::new(!initially_listed);
     let custom_text = RwSignal::new(current_model());
 
-    // 测量完成后，模型已经出现在下拉里，自动收起手输框，避免两个入口同时亮着。
+    // 测量完成后模型会进入下拉列表，此时收起手输框，避免两个入口同时显示。
     let measured_len = RwSignal::new(measured().len());
     Effect::new(move |_| {
         let list = measured();
@@ -56,7 +56,7 @@ pub fn AskCard() -> impl IntoView {
         }
     });
 
-    // 当前模型不在任何列表里时，自动露出输入框，避免下拉停在第一个选项造成错位。
+    // 当前模型不在任何列表里时露出输入框，避免下拉显示第一个选项造成错位。
     let model_key = Memo::new(move |_| {
         let state = ctx.state.get();
         (state.model_id.clone(), state.measured.len())
@@ -70,7 +70,7 @@ pub fn AskCard() -> impl IntoView {
         }
     });
 
-    // 自定义模型提交：只在真正变化时触发一次重算。
+    // 自定义模型只在值真正变化时提交一次。
     let commit_custom = move || {
         let value = custom_text.get_untracked().trim().to_string();
         if value.is_empty() || value == ctx.state.get_untracked().model_id {
@@ -99,7 +99,7 @@ pub fn AskCard() -> impl IntoView {
     let note = move || model_note(&ctx.evaluation());
     let running = move || ctx.state.get().calibration.status == CalibrationStatus::Running;
 
-    // 按钮文案与动作保持一致：内置画像重载参考，实测画像和无画像去探测区。
+    // 按钮文案与行为对应：内置画像重新载入参考，实测画像和无画像跳到探测区。
     let calibrate = move |_| {
         let state = ctx.state.get_untracked();
         let api_profile = state
@@ -117,7 +117,7 @@ pub fn AskCard() -> impl IntoView {
         }
     };
 
-    // 一键示例放在输入区，首屏就能点到；点完在单列布局下自动带到结论。
+    // 示例入口放在输入区；载入后在单列布局下滚动到结论。
     let run_demo = move |_| {
         ctx.load_demo();
         crate::io::reveal_verdict_if_stacked();

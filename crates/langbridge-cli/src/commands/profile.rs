@@ -1,4 +1,4 @@
-// profile：list / show / import / export / validate / remove / path
+//! profile 子命令：列出、查看、导入、导出、校验、删除本地画像，或输出画像目录。
 
 use std::fs;
 use std::io::IsTerminal;

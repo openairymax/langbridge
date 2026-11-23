@@ -1,10 +1,7 @@
-//! Web 状态层：单一状态、派生评测与动作。对应 TypeScript 的 `state/reducer.ts`
-//! `state/selectors.ts` `state/store.ts`，业务计算全部下沉到 core。
-//!
-//! 设计约定：
-//! - 状态是唯一事实来源；评测由状态派生，界面不重复算路由。
-//! - 探测中途换模型或再次发起时，旧结果按世代号丢弃，不覆盖新视图。
-//! - 浏览器存储只在边界处降级，失败时提示一次并继续运行。
+//! Web 状态层：唯一的应用状态、由状态派生的评测与动作入口。
+//! 业务计算全部在 `langbridge_core`，这里只持有状态并调度动作。
+//! 探测结果带世代号，换模型或重新发起后到达的旧结果一律丢弃。
+//! localStorage 读写失败在调用点降级并提示，不阻断界面。
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -32,10 +29,10 @@ use crate::probe::{calibrate_via_api, test_connection, ConnectionCheck, ProbeEve
 
 pub const UI_KEY: &str = "langbridge.ui.v3";
 pub const PROFILE_KEY: &str = "langbridge.profile.v3";
-/// 实测模型清单：只记模型名与比值，画像本体按模型单独存。
+/// 实测模型清单。只记录模型名与比值，画像本体按模型分键存储。
 pub const MEASURED_KEY: &str = "langbridge.measured.v3";
 const MEASURED_LIMIT: usize = 12;
-/// 持久化文本上限：超出部分不写入 localStorage，避免超大文本拖死首屏。
+/// 持久化文本上限。超出部分不写入 localStorage，避免大文本拖慢启动时的反序列化。
 pub const MAX_PERSISTED_TEXT: usize = 100_000;
 
 /* ------------------------------------------------------------------ */
@@ -72,7 +69,7 @@ pub struct Evaluation {
 }
 
 impl PartialEq for Evaluation {
-    /// 只比较会影响结论与展示的字段：动作无关的状态变化不触发重渲染。
+    /// 只比较影响结论与展示的字段，避免无关状态变化触发重渲染。
     fn eq(&self, other: &Self) -> bool {
         self.model.model_id == other.model.model_id
             && self.signals.lang == other.signals.lang
@@ -139,7 +136,7 @@ pub fn profile_status(profile: Option<&ModelProfile>, now: i64) -> ProfileStatus
 }
 
 pub fn select_model(state: &AppState) -> ModelMeta {
-    // API 探测得到的模型不在内置列表：按启发式元数据降级，保证画像可用。
+    // API 探测得到的模型可能不在内置列表，用启发式元数据兜底，保证画像仍可用。
     meta_for(
         &state.model_id,
         state.profile.as_ref().map(|p| p.measurement.effective_ratio),
@@ -277,7 +274,7 @@ pub struct CalibrationState {
     pub step: Option<ProbeProgress>,
     pub log: Vec<ProbeLogItem>,
     pub hint: Option<String>,
-    /// 发起本次探测的目标模型；切换模型后置空，用于丢弃迟到结果。
+    /// 本次探测的目标模型。切换模型后置空，迟到的结果据此丢弃。
     pub target_model_id: Option<String>,
 }
 
@@ -334,7 +331,7 @@ pub enum TabId {
     Advanced,
 }
 
-/// 一条实测记录：用于模型下拉与「我的测量」分组，不含 Key 与任何请求内容。
+/// 一条实测记录，用于模型下拉与「我的测量」分组。不含 Key，也不含请求内容。
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MeasuredEntry {
     pub id: String,
@@ -442,7 +439,7 @@ fn parse_for(raw: &str, model_id: &str) -> Option<ModelProfile> {
         .filter(|profile| profile.model.model_id == model_id)
 }
 
-/// 先读按模型保存的画像，再回退到 v3 早期只存一份的旧键，保证老用户不丢数据。
+/// 先读按模型分键保存的画像，再回退到旧版共用的键，兼容早期版本写入的数据。
 pub fn load_profile(model_id: &str) -> Option<ModelProfile> {
     if let Some(raw) = io::get_item(&profile_key(model_id)) {
         if let Some(profile) = parse_for(&raw, model_id) {
@@ -456,7 +453,7 @@ pub fn save_profile(profile: &ModelProfile) -> bool {
     let raw = serialize_profile(profile);
     let model_id = &profile.model.model_id;
     let saved = io::set_item(&profile_key(model_id), &raw);
-    // 旧键继续保留当前画像，兼容早期版本与外部导出脚本。
+    // 旧键继续写入当前画像，兼容早期版本读取。
     io::set_item(PROFILE_KEY, &raw);
     if profile.measurement.method == langbridge_core::types::ProfileSource::ApiProbe {
         register_measured(profile);
@@ -479,7 +476,7 @@ pub fn clear_profile(model_id: &str) {
     }
 }
 
-/// 读取本机实测清单；数据损坏时当作空清单，不影响主流程。
+/// 读取本机实测清单。数据损坏时返回空清单。
 pub fn load_measured() -> Vec<MeasuredEntry> {
     let Some(raw) = io::get_item(MEASURED_KEY) else {
         return Vec::new();
@@ -487,7 +484,7 @@ pub fn load_measured() -> Vec<MeasuredEntry> {
     let Ok(mut list) = serde_json::from_str::<Vec<MeasuredEntry>>(&raw) else {
         return Vec::new();
     };
-    // 清单只保留确实存在实测画像的条目：画像被删除或存储失败时不留幽灵选项。
+    // 清单只保留确实存在实测画像的条目，避免下拉出现指向已不存在画像的选项。
     list.retain(|entry| {
         !entry.id.is_empty()
             && entry.ratio.is_finite()
@@ -565,14 +562,14 @@ impl AppCtx {
             s.import_errors = None;
             s.migrated = false;
         });
-        // 切换模型后立刻刷新信号，避免旧模型下的推断残留。
+        // 缓存的信号可能滞后于文本，切换模型后按当前文本重算。
         let text = self.state.get_untracked().text;
         let signals = extract_signals(&text, "");
         self.state.update(|s| s.signals = Some(signals));
     }
 
-    /// 一键示例：填入英文示例，切到有独立思考且有内置证据的模型，并载入参考数据。
-    /// 只挑推理模型，首击就能看到净收益与门槛两条横条。
+    /// 载入示例：填入英文示例文本，切到有独立思考且带内置证据的模型，并载入参考数据。
+    /// 只有推理模型会显示净收益与门槛两条横条。
     pub fn load_demo(&self) {
         let example = crate::data::EXAMPLES
             .iter()
@@ -583,14 +580,14 @@ impl AppCtx {
             if id != self.state.get_untracked().model_id {
                 self.set_model(id.clone());
             }
-            // 已有画像时尊重已有测量结果，不拿内置参考覆盖。
+            // 已有画像时保留已有测量结果，不用内置参考覆盖。
             if load_profile(&id).is_none() {
                 self.calibrate(Some(id));
             }
         }
     }
 
-    /// 空态里点某个内置模型：切过去、载入内置参考，没输入时补一条能出结论的示例。
+    /// 空态里点某个内置模型：切过去并载入内置参考，没有输入时补一条能出结论的示例。
     pub fn load_model_demo(&self, model_id: String) {
         if self.state.get_untracked().text.trim().is_empty() {
             let example = crate::data::EXAMPLES
@@ -634,7 +631,7 @@ impl AppCtx {
         self.state.update(|s| s.show_raw = !s.show_raw);
     }
 
-    /// 方法 A：内置证据同步校准。
+    /// 用内置证据做一次同步校准，不发网络请求。
     pub fn calibrate(&self, target: Option<String>) {
         let state_signal = self.state;
         let current = state_signal.get_untracked();
@@ -669,7 +666,7 @@ impl AppCtx {
         apply_success(state_signal, profile, rerun);
     }
 
-    /// 方法 B：API 真实探测。逐条上报进度，可取消。
+    /// 用 API 真实探测校准。逐条上报进度，可中途取消。
     pub fn calibrate_api(&self, base_url: String, api_key: String, model_id: String) {
         let state_signal = self.state;
         let generation = bump_generation();
@@ -861,7 +858,7 @@ impl AppCtx {
         api_key: String,
         model_id: String,
     ) -> ConnectionCheck {
-        // 自检要快：8 秒足以判断地址、Key 与跨域。
+        // 只发一个最小请求，8 秒超时足以区分地址、Key 与跨域问题。
         test_connection(ProbeOptions {
             base_url,
             api_key,
@@ -941,7 +938,7 @@ fn rerun_diff(prev: &CalibrationResult, next: &CalibrationResult) -> RerunDiff {
 
 fn apply_success(state: RwSignal<AppState>, profile: ModelProfile, rerun: Option<RerunDiff>) {
     let model_id = profile.model.model_id.clone();
-    // 先确认结果属于本次探测目标，再写存储，避免迟到的结果留下幽灵画像。
+    // 先确认结果属于本次探测目标，再写存储，避免迟到结果落到已切换的模型上。
     let target_ok = state
         .get_untracked()
         .calibration
@@ -1084,7 +1081,7 @@ fn persist_prefs(state: &AppState) -> Result<(), ()> {
     if io::set_item(UI_KEY, &json) {
         return Ok(());
     }
-    // 配额不足多半是 text 太长：丢掉 text 重试，保证模型与地址仍记得住。
+    // 配额不足可能是 text 超出上下文，丢掉 text 重试，保留模型与地址的配置。
     let fallback = UiPrefs {
         model_id: prefs.model_id,
         r_override: prefs.r_override,
@@ -1097,7 +1094,7 @@ fn persist_prefs(state: &AppState) -> Result<(), ()> {
     }
 }
 
-/// 启动状态与三条副作用：文本转信号、偏好持久化、存储告警自动收起。
+/// 创建应用状态并安装副作用：文本转信号、偏好持久化、存储告警自动收起。
 pub fn install_app_state() -> AppCtx {
     let state = RwSignal::new(create_initial_state());
     let evaluation = Memo::new(move |_| {
@@ -1105,7 +1102,7 @@ pub fn install_app_state() -> AppCtx {
         select_evaluation(&snapshot, langbridge_core::now_ms())
     });
 
-    // 文本 → 信号（120ms 防抖）：打字时不重算，停手后再更新。
+    // 文本转信号，120ms 防抖：停止输入后才重算。
     Effect::new({
         let state = state;
         move |_| {
@@ -1181,12 +1178,12 @@ pub fn install_app_state() -> AppCtx {
     AppCtx { state, evaluation }
 }
 
-/// 内联的 setTimeout 小工具：不依赖读锁，回调在下一帧后执行。
+/// setTimeout 的薄封装：不保留句柄，回调触发后自行释放。
 fn set_timeout<F: FnOnce() + 'static>(f: F, after: std::time::Duration) {
     gloo_timers::callback::Timeout::new(after.as_millis() as u32, f).forget();
 }
 
-/// 信号等价判断：避免「写入信号 → 触发副作用 → 再写入」的循环。
+/// 比较两组信号是否等价，避免副作用写入后再次触发自身。
 fn signals_equal(a: &Signals, b: &Signals) -> bool {
     a.lang == b.lang
         && a.task == b.task
@@ -1201,12 +1198,12 @@ fn signals_equal(a: &Signals, b: &Signals) -> bool {
         && a.en_mass == b.en_mass
 }
 
-/// 让文案层拿到当前信号里的语言名。
+/// 把 Lang 转成界面展示的语言名。
 pub fn lang_name(value: Lang) -> &'static str {
     lang_text(value)
 }
 
-/// 数据来源的稳定键：用于按钮文案与类名，不用于展示。
+/// 数据来源的稳定键，用于按钮文案与类名，不用于展示。
 pub fn source_key(source: ProfileSource) -> &'static str {
     match source {
         ProfileSource::Builtin => "builtin",

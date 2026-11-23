@@ -1,12 +1,12 @@
-//! 净收益模型：只展示扣除注入开销后的净收益，不划算就明确劝退。
-//! 只有真的发生切换时才产生注入开销：目标语言等于当前语言时开销恒为 0。
+//! 净收益模型：只报告扣除注入开销后的净收益。
+//! 目标语言与当前语言相同时不产生注入开销。
 
 use crate::profiles::{RATIO_HIGH_DEFAULT, RATIO_LOW_DEFAULT};
 use crate::types::{Lang, ModelMeta, ModelProfile, SavingsResult, TaskType};
 
 pub const SWITCH_THRESHOLD_TOKENS_DEFAULT: f64 = 50.0;
 pub const SWITCH_THRESHOLD_PCT_DEFAULT: f64 = 0.08;
-/// 切换所需的最小预期思考量：不高于此值不建议切换
+/// 切换所需的最小预期思考量，不高于该值不建议切换。
 pub const MIN_R_SWITCH: f64 = 300.0;
 
 fn task_base_r(task: TaskType) -> f64 {
@@ -19,7 +19,7 @@ fn task_base_r(task: TaskType) -> f64 {
     }
 }
 
-/// 预期推理规模 R：任务档位 × 模型系数（推理模型 1.5）
+/// 预期推理规模 R：任务基准量乘以模型系数，推理模型取 1.5。
 pub fn estimate_r(task: TaskType, model: &ModelMeta) -> f64 {
     let base = task_base_r(task);
     (base * if model.reasoning_capable { 1.5 } else { 1.0 }).round()
@@ -44,7 +44,7 @@ pub fn compute_savings(input: &SavingsInput) -> SavingsResult {
     let overhead = input.system_tokens.max(0.0) + input.tag_tokens.max(0.0);
     let threshold = (threshold_tokens.max(threshold_pct * r)).round();
 
-    // 不切换：既不省也不花，注入开销不会发生
+    // 不切换时不产生注入开销
     if input.current == input.target {
         return SavingsResult {
             r,
@@ -71,7 +71,7 @@ pub fn compute_savings(input: &SavingsInput) -> SavingsResult {
     };
     let gross = r * (1.0 - multiplier);
 
-    // 思考量太小的场景：切换收益本来就不够折腾，不产生开销
+    // 思考量低于阈值，不切换，也不产生注入开销
     if r <= MIN_R_SWITCH {
         return SavingsResult {
             r,
@@ -136,7 +136,7 @@ pub struct Thresholds {
     pub ratio_low: f64,
 }
 
-/// 从画像读取策略阈值；旧版默认死区 1.35 / 0.85 视为失效
+/// 从画像读取策略阈值。死区恰为 1.35 / 0.85 时视为失效，回落为默认值。
 pub fn policy_from_profile(profile: Option<&ModelProfile>) -> Thresholds {
     let stored = profile.map(|p| &p.policy);
     let legacy_band = stored

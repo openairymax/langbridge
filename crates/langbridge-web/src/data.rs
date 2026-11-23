@@ -1,5 +1,5 @@
 //! 内置数据：空态参考表、首屏示例与校准样本。
-//! 所有数字都来自 core 的内置证据与样本计算，这里不写死任何换算结果。
+//! 换算结果全部由 `langbridge_core` 的证据与样本计算，此处不写死。
 
 use langbridge_core::evidence::{calibrate_from_evidence, list_evidence_models};
 use langbridge_core::profiles::get_model;
@@ -15,7 +15,7 @@ pub struct BuiltinRow {
     pub ratio: f64,
 }
 
-/// 内置证据的真实换算结果：空态参考表与 hero 卖点共用。
+/// 由内置证据换算成本比，供空态参考表与首屏复用。缺少证据或换算失败的模型跳过。
 pub fn builtin_rows() -> Vec<BuiltinRow> {
     list_evidence_models()
         .into_iter()
@@ -31,8 +31,8 @@ pub fn builtin_rows() -> Vec<BuiltinRow> {
         .collect()
 }
 
-/// 空态示例用模型：优先选有独立思考、且内置证据与 1 的差距最大的一档。
-/// 有推理的模型才会出现「净收益 / 门槛」两条横条，示例点下去就能看到完整结论。
+/// 空态默认示例模型：在具备独立思考的模型中选成本比偏离 1 最大的一档。
+/// 只有这类模型才会显示净收益与门槛两条横条。
 pub fn demo_model_id() -> Option<String> {
     let rows = builtin_rows();
     let pick = |only_reasoning: bool| {

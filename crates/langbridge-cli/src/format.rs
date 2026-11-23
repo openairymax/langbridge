@@ -1,4 +1,6 @@
-// 终端输出格式化：TTY 才用颜色；--json 时调用方直接输出 JSON
+//! 终端输出格式化，仅在 stdout 为终端且未设置 NO_COLOR 时着色。
+//!
+//! 机器可读输出由调用方直接序列化 JSON，本模块只处理人类可读文本。
 
 use std::env;
 use std::io::IsTerminal;
@@ -123,7 +125,7 @@ pub fn decided_by_code(d: DecidedBy) -> String {
         .unwrap_or_else(|| "fallback".to_string())
 }
 
-/// 近似 JS 的数值字符串（整数不带小数点）
+/// 格式化数值：整数不带小数点，非有限值输出 NaN。
 pub fn js_num(n: f64) -> String {
     if !n.is_finite() {
         return "NaN".to_string();

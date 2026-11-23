@@ -1,5 +1,5 @@
-//! Phase 3 输出后处理：标签解析 → 漂移检测 → 术语一致性 → 意译润色。
-//! 流式只统计，不改写。
+//! 输出后处理：标签解析、漂移检测、术语替换与空白归一。
+//! 流式响应只做统计，不改写内容。
 
 use std::sync::OnceLock;
 
@@ -25,7 +25,7 @@ fn answer_re() -> &'static Regex {
     CELL.get_or_init(|| Regex::new(r"(?is)<answer>([\s\S]*?)(?:</answer>|$)").unwrap())
 }
 
-/// 双标签解析：无标签时全文为 answer
+/// 双标签解析，无标签时全文作为 answer。
 pub fn parse_output(raw: &str) -> ParsedOutput {
     let thinking_blocks: Vec<String> = thinking_re()
         .captures_iter(raw)
@@ -55,7 +55,7 @@ pub struct DriftResult {
     pub threshold: f64,
 }
 
-/// 漂移阈值：期望语言质量占比低于该值判定漂移（不阻断）
+/// 漂移阈值：期望语言纯度低于该值时判定漂移，仅记录不阻断。
 pub const DRIFT_THRESHOLD: f64 = 0.6;
 
 pub fn detect_drift(text: &str, expected: Lang, threshold: f64) -> DriftResult {
@@ -100,7 +100,7 @@ fn split_code_segments(text: &str) -> Vec<(bool, String)> {
     parts
 }
 
-/// 术语一致性替换：只处理正文，跳过代码块与行内代码
+/// 术语一致性替换，只处理正文，跳过代码块与行内代码。
 pub fn apply_terminology(text: &str) -> (String, usize) {
     let mut applied = 0usize;
     let out = split_code_segments(text)
@@ -149,7 +149,7 @@ fn polish_text(text: &str) -> String {
     lets.replace_all(&s, "我们").into_owned()
 }
 
-/// 意译润色：空白归一、去直译腔、中英文间距清理（轻量确定性）
+/// 文本润色：归一空白、清理中英文间距与重复虚词。仅在非流式输出上执行。
 pub fn polish(text: &str) -> String {
     split_code_segments(text)
         .into_iter()
@@ -180,13 +180,13 @@ pub struct PostprocessResult {
 
 pub fn postprocess(raw: &str, opts: &PostprocessOptions) -> PostprocessResult {
     let parsed = parse_output(raw);
-    // 漂移检测在改写前采样，避免术语替换/润色抬高或压低语言纯度
+    // 漂移检测在改写前采样，避免术语替换与润色改变语言纯度
     let drift = detect_drift(&parsed.answer, opts.expected_lang, DRIFT_THRESHOLD);
     let mut answer = parsed.answer;
     let mut terminology_applied = 0usize;
     let mut polished = false;
     if !opts.streaming {
-        // 术语表方向为中→英术语转中文，仅在期望输出为中文时应用
+        // 术语表把英文术语替换为中文，仅在期望输出为中文时应用
         if opts.expected_lang == Lang::Zh {
             let (text, applied) = apply_terminology(&answer);
             answer = text;
@@ -207,7 +207,7 @@ pub fn postprocess(raw: &str, opts: &PostprocessOptions) -> PostprocessResult {
     }
 }
 
-/// 仅统计（流式）：不修改内容
+/// 仅统计，不修改内容。
 pub fn inspect_only(text: &str, expected_lang: Lang) -> DriftResult {
     detect_drift(&strip_code(text), expected_lang, DRIFT_THRESHOLD)
 }

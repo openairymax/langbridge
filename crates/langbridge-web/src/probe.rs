@@ -1,5 +1,6 @@
-//! 浏览器 API 探测：fetch + AbortController + JsFuture + ReadableStream 手写。
-//! 纯逻辑（URL、鉴权头、载荷、错误归类、usage 解析、差分校准）全部复用 core。
+//! 浏览器侧 API 探测：基于 fetch、AbortController 与 ReadableStream 读取响应。
+//! URL、鉴权、载荷、错误归类、usage 解析与差分校准在 `langbridge_core`；此处负责发请求、
+//! 读响应与超时取消。
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -20,7 +21,7 @@ use web_sys::{
 
 const NETWORK_ERROR_MESSAGE: &str = "连不上：常见原因是跨域（CORS）被拦截，或网络不通";
 
-/// 探测过程事件：每一步都上报，便于界面展示实时进度与失败原因。
+/// 探测过程事件，逐步上报给界面显示进度与失败原因。
 #[derive(Debug, Clone)]
 pub enum ProbeEvent {
     Start { total: usize },
@@ -298,7 +299,7 @@ async fn read_server_message(res: &Response) -> String {
     slice_utf16(&collapsed, 200).to_string()
 }
 
-/// 单次请求：超时与外部取消合并到一个 AbortController 上。
+/// 单次请求，超时与外部取消合并到同一个 AbortController。
 async fn fetch_once(
     url: &str,
     headers: &Headers,
@@ -456,7 +457,7 @@ async fn probe_prompt_tokens(
     }
 }
 
-/// 连接自检：只发 1 个最小请求，判断 Key / Base URL / 模型 ID / 跨域。
+/// 连接自检：发一个最小请求，判断 Key、Base URL、模型 ID 与跨域。
 pub async fn test_connection(opts: ProbeOptions) -> ConnectionCheck {
     let started = js_sys::Date::now();
     let step = ProbeStep {
@@ -484,7 +485,7 @@ pub async fn test_connection(opts: ProbeOptions) -> ConnectionCheck {
     }
 }
 
-/// 方法 B：API 探测。固定 6 个请求，逐个上报进度。
+/// API 探测校准。发固定 6 个请求，逐个上报进度。
 pub async fn calibrate_via_api(opts: ProbeOptions) -> Result<CalibrationResult, EngineError> {
     if langbridge_core::evidence::normalize_base(&opts.base_url).is_empty() {
         return Err(EngineError::new(ErrorCode::BadBaseUrl, "请填写 Base URL"));

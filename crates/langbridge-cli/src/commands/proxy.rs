@@ -1,4 +1,6 @@
-// proxy：启动本机 OpenAI 兼容代理（HTTP/1.1 + 线程）
+//! proxy 子命令：启动本机 OpenAI 兼容代理。
+//!
+//! 协议处理与上游转发在 crate::proxy 中实现，本模块只负责参数校验与启动。
 
 use std::path::Path;
 

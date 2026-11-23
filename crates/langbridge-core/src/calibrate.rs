@@ -1,5 +1,4 @@
-//! Tokenizer 特征校准：对同语义 N / 2N / 4N 三档计数做最小二乘，
-//! 斜率差分抵消固定开销。
+//! Tokenizer 特征校准：对同一语料的 N / 2N / 4N 三档计数做最小二乘拟合，固定开销由差分抵消。
 
 use crate::signals::round2;
 use crate::types::{
@@ -7,13 +6,13 @@ use crate::types::{
     TokenizerMeta, Warning,
 };
 
-/// 线性度判定：二档增量相对一档增量的偏差上限（严格小于才算线性）
+/// 线性度上限：二档增量相对一档增量的允许偏差，严格小于才判定为线性。
 pub const LINEAR_MAX_DEVIATION: f64 = 0.15;
 
-/// 校准置信度下限：低于此值不可用于成本决策
+/// 校准置信度下限，低于该值不用于成本决策。
 pub const MIN_CONFIDENCE: f64 = 0.6;
 
-/// 周期校准：每 100 次指令触发一次
+/// 每处理 100 次请求触发一次重新校准。
 pub const RECALIBRATE_EVERY: u64 = 100;
 
 #[derive(Debug, Clone, Copy)]
@@ -76,7 +75,7 @@ fn by_lang(obs: &[Observation], lang: Lang) -> Vec<Observation> {
     list
 }
 
-/// 由 6 条观测（每语言 3 档）计算校准结果。观测不足直接报错，不做静默容错。
+/// 由 6 条观测（每语言 3 档）计算校准结果；观测不足时报错。
 pub fn compute_calibration(
     obs: &[Observation],
     meta: &CalibrationMeta,
@@ -171,7 +170,7 @@ pub fn compute_calibration(
     })
 }
 
-/// 重跑一致性：两次密度比绝对偏差 > 15% 判定不稳定
+/// 重跑一致性：两次密度比的绝对偏差超过 15% 判定为不稳定。
 pub fn compare_rerun(prev: &CalibrationResult, next: &CalibrationResult) -> (f64, bool) {
     if prev.density_ratio <= 0.0 {
         return (1.0, false);
@@ -184,7 +183,7 @@ pub fn should_recalibrate(tick_count: u64) -> bool {
     tick_count > 0 && tick_count % RECALIBRATE_EVERY == 0
 }
 
-/// 校准结果是否可用于成本决策
+/// 判断校准结果能否用于成本决策。
 pub fn calibration_usable(cal: &CalibrationResult) -> bool {
     cal.confidence >= MIN_CONFIDENCE
         && cal.linearity_ok

@@ -1,5 +1,7 @@
-// doctor：环境与依赖自检
-// 退出码：0 全部通过 / 2 存在失败项；--json（全局参数）时只向 stdout 输出纯 JSON
+//! doctor 子命令：检查运行环境、画像目录与内置证据的可用性。
+//!
+//! 全部通过返回 0，存在失败项返回 2。与其它子命令不同，只有显式 --json
+//! 才输出 JSON，不因 stdout 非终端而自动切换。
 
 use std::path::Path;
 
@@ -46,7 +48,6 @@ fn dir_writable(path: &Path) -> bool {
 }
 
 pub fn doctor_command(args: &ParsedArgs) -> Result<i32, crate::store::CliError> {
-    // 与 TS 一致：doctor 只在显式 --json 时输出 JSON，不跟随非 TTY 自动 JSON
     let as_json = args.flag_true("json");
     let mut ok = true;
 
@@ -136,7 +137,7 @@ pub fn doctor_command(args: &ParsedArgs) -> Result<i32, crate::store::CliError> 
             &if runtime_ok {
                 green("OK")
             } else {
-                red("需要 Node >= 20")
+                red("不可用")
             }
         )
     );

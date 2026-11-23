@@ -1,5 +1,5 @@
 //! 折叠区：参考数据与测量、数据来源与进阶、接入与高级。
-//! 三段都默认收起，避免把首屏挤满；展开后按「结论 → 依据 → 原始数据」排序。
+//! 三段默认收起，展开后按结论、依据、原始数据的顺序排列。
 
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -354,7 +354,7 @@ fn EvidenceFold() -> impl IntoView {
         });
     };
 
-    // 删除是两步确认，且确认只对当前模型有效，切换模型后自动失效。
+    // 删除需要二次确认，确认态只对当前模型有效，切换模型后失效。
     let confirm_delete = RwSignal::new(None::<String>);
     let reset = move |_| {
         let state = ctx.state.get_untracked();
@@ -559,7 +559,7 @@ fn AdvancedFold() -> impl IntoView {
         crate::io::spawn_copy(plan.system_prompt.clone(), hook);
     };
 
-    // 提示内容变了，复制状态回到「待复制」，避免旧的成功字样留在新提示上。
+    // 提示内容变化后复制状态回到 0，避免旧的成功字样留在新提示上。
     Effect::new(move |_| {
         injection();
         copy_state.set(0);

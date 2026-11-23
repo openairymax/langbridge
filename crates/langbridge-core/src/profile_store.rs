@@ -1,5 +1,5 @@
-//! 画像的纯逻辑部分：过期判定、内置刷新、由校准重建画像。
-//! 具体存储由 Web（localStorage）与 CLI（文件）各自实现。
+//! 画像的纯逻辑部分：过期判定、内置数据检查与由校准重建画像。
+//! 存储由调用方实现。
 
 use serde_json::Value;
 
@@ -18,7 +18,7 @@ pub const PROFILE_MAP_KEY: &str = "langbridge.profile.v3.map";
 pub const RECENT_KEY: &str = "langbridge.recent.v3";
 pub const PROFILE_MAX_AGE_DAYS: i64 = 90;
 
-/// 内置数据是公开 tokenizer 的真实计数而非服务端实测：永不因时间失效
+/// 内置数据来自公开 tokenizer 的真实计数，不随时间失效。
 pub fn is_expired(profile: &ModelProfile, now_ms: i64) -> bool {
     if profile.measurement.method == ProfileSource::Builtin {
         return false;
@@ -29,7 +29,7 @@ pub fn is_expired(profile: &ModelProfile, now_ms: i64) -> bool {
     }
 }
 
-/// 内置参考数据的陈旧提示（仅用于展示，不参与可用性判断）
+/// 内置参考数据的陈旧提示，仅用于展示，不参与可用性判断。
 pub fn is_builtin_stale(profile: &ModelProfile, days: i64, now_ms: i64) -> bool {
     if profile.measurement.method != ProfileSource::Builtin {
         return false;
@@ -47,7 +47,7 @@ pub fn age_days(profile: &ModelProfile, now_ms: i64) -> f64 {
     }
 }
 
-/// 由已有校准结果重建画像
+/// 由已有校准结果重建画像。
 pub fn profile_from_calibration(
     model_id: &str,
     calibration: CalibrationResult,
@@ -68,9 +68,7 @@ pub fn profile_from_calibration(
     profile
 }
 
-/* ------------------------------------------------------------------ */
-/* 导入 / 导出                                                         */
-/* ------------------------------------------------------------------ */
+/* 导入 / 导出 */
 
 #[derive(Debug, Clone, Default)]
 pub struct ParseProfileResult {
@@ -116,7 +114,7 @@ fn is_lang(v: Option<&Value>) -> bool {
     matches!(v.and_then(Value::as_str), Some("zh") | Some("en"))
 }
 
-/// 校验 v3 画像；错误消息可直接展示给用户
+/// 校验 v3 画像，错误消息可直接展示给用户。
 pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
     let Some(p) = value.as_object() else {
         return ParseProfileResult::fail(vec![err("$", "不是合法对象")]);
@@ -133,7 +131,7 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
     match p.get("model").and_then(Value::as_object) {
         None => errors.push(err("model", "缺少 model")),
         Some(model) => {
-            // 允许 Azure 的斜杠与 Ollama 的冒号；首字符必须为字母或数字
+            // 允许 Azure 的斜杠与 Ollama 的冒号，首字符必须为字母或数字
             let model_id = model.get("model_id").and_then(Value::as_str).map(str::trim);
             let id_ok = model_id
                 .map(|id| {
@@ -357,7 +355,7 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
     }
 }
 
-/// v2 画像迁移：只接受带真实观测的旧数据，不伪造测量结果
+/// v2 画像迁移：只接受带真实观测的数据。
 fn migrate_v2(value: &Value, now_ms: i64) -> ParseProfileResult {
     let Some(v) = value.as_object() else {
         return ParseProfileResult::fail(vec![err("version", "不是可识别的 v2 画像")]);
@@ -520,7 +518,7 @@ fn migrate_v2(value: &Value, now_ms: i64) -> ParseProfileResult {
     }
 }
 
-/// 解析导入文件：支持 v3 与 v2（自动迁移）
+/// 解析导入文件，支持 v3 与 v2 自动迁移。
 pub fn parse_profile_file(text: &str, now_ms: i64) -> ParseProfileResult {
     let value: Value = match serde_json::from_str(text) {
         Ok(v) => v,

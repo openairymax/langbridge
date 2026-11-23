@@ -1,5 +1,5 @@
 //! 浏览器能力封装：localStorage、剪贴板、下载与文件读取。
-//! 存储不可用时一律降级为 false / None，由调用方提示并继续运行。
+//! 存储不可用时返回 false 或 None，由调用方提示后继续运行。
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -43,7 +43,7 @@ pub fn remove_item(key: &str) {
     }
 }
 
-/// 剪贴板不可用时的同步兜底：临时 textarea + execCommand。
+/// 异步剪贴板不可用时的兜底：临时 textarea 配合 execCommand，执行后移除节点。
 fn copy_text_legacy(text: &str) -> bool {
     let Some(doc) = window().and_then(|win| win.document()) else {
         return false;
@@ -75,7 +75,7 @@ fn copy_text_legacy(text: &str) -> bool {
     ok
 }
 
-/// 优先用异步剪贴板，失败时回退到 execCommand；两条路都不通才返回 false。
+/// 先走异步剪贴板 API，被拒绝时回退到 execCommand。
 pub async fn copy_text(text: &str) -> bool {
     let Some(win) = window() else {
         return false;
@@ -104,7 +104,7 @@ pub fn scroll_to(id: &str) {
     }
 }
 
-/// 单列布局下结论在输入区下方，示例点完把页面带到结论；双列不动，避免桌面端抢滚动。
+/// 单列布局下结论排在输入区之后，切换示例后滚动到结论；桌面双列不动，避免抢走滚动位置。
 pub fn reveal_verdict_if_stacked() {
     let Some(win) = window() else {
         return;
@@ -123,7 +123,7 @@ pub fn reveal_verdict_if_stacked() {
     }
 }
 
-/// 与 TS `downloadText` 对齐：Blob + 临时 a 标签，1 秒后释放 object URL。
+/// 用 Blob 与临时 a 标签触发下载，延迟 1 秒释放 object URL。
 pub fn download_text(filename: &str, text: &str, mime: &str) {
     let Some(win) = window() else {
         return;
@@ -165,7 +165,7 @@ pub fn download_text(filename: &str, text: &str, mime: &str) {
     .forget();
 }
 
-/// 与 TS `readFileAsText(file)` 对齐：UTF-8 读取失败时 reject。
+/// 以 UTF-8 读取文件；FileReader 报错时返回 Err。
 pub async fn read_file_text(file: &File) -> Result<String, String> {
     let promise = js_sys::Promise::new(&mut {
         let file = file.clone();

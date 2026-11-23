@@ -1,20 +1,20 @@
-/* LangBridge 视觉系统 v25：冷白纸底、黑色 1px 细线网格。
-   字体只有两轨：中文正文一律 MiSans，数字与代码用等宽。层级靠字号与字重，不靠换字族。
-   字号与行高三档收敛：展示 72/1.15、标题 34/1.3、正文 16/1.7、小字 14/1.6、标注 13/1.5。 */
+/* LangBridge 全站样式入口：设计令牌与组件样式。
+   字族两轨：中文正文用 MiSans，数字与代码用等宽；层级只用字号与字重区分，不引入第三种字族。
+   字号五级、行高按用途分档：展示 72/1.15，标题 34/1.3，正文 16/1.7，小字 14/1.6，标注 13/1.5。 */
 
 :root {
-  /* ---- 纸面三级：页面底 / 卡片面 / 卡内凹陷 ---- */
+  /* ---- 背景色三级：页面底 / 卡片面 / 卡内凹陷 ---- */
   --bg: #f7f8fa;
   --card: #ffffff;
   --sunken: #f4f6fa;
 
-  /* ---- 墨色四级：正文 / 次级 / 辅助 / 占位 ---- */
+  /* ---- 文字色四级：正文 / 次级 / 辅助 / 占位 ---- */
   --ink: #111418;
   --ink-2: #495159;
   --ink-3: #69727d;
   --ink-4: #a8b0bd;
 
-  /* ---- 蓝阶：整体轻盈——图形用亮蓝，文字强调用可读的中蓝 ---- */
+  /* ---- 蓝色阶：图形用 --blue，文字强调用对比度更高的 --blue-dark ---- */
   --blue: #3b82f6;
   --blue-dark: #2563eb;
   --blue-deep: #1d4ed8;
@@ -22,23 +22,23 @@
   --blue-wash: #f6faff;
   --blue-line: #dbeafe;
 
-  /* ---- 线阶：结构黑线 / 卡内细线 / 更细分隔 / 交互悬停线 ---- */
+  /* ---- 线条色阶：结构线 / 卡内细线 / 更细分隔 / 悬停线 ---- */
   --rule: #1a2029;
   --line: #dfe5ec;
   --line-soft: #e9eef4;
   --line-strong: #ccd4de;
 
-  /* ---- 代码块：全站唯一的深色面，仅用于原文/注入提示词 ---- */
+  /* ---- 代码块配色：深色底，仅用于原文与注入提示词 ---- */
   --code-bg: #171a1f;
   --code-ink: #cfe3ff;
 
   --radius: 0px;
   --shadow: none;
   --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  /* 唯一正文字族：MiSans（内嵌子集，/fonts/font-faces.css） */
+  /* 正文字族：MiSans 内嵌子集，声明见 /fonts/font-faces.css */
   --sans: 'MiSans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 
-  /* ---- 字号阶梯：只保留五级，其他一律归并到最近一级 ---- */
+  /* ---- 字号阶梯：仅五级，新增字号归并到最近一级 ---- */
   --fs-display: 72px;
   --fs-title: 34px;
   --fs-lead: 20px;
@@ -46,7 +46,7 @@
   --fs-small: 14px;
   --fs-meta: 13px;
 
-  /* ---- 行高阶梯：展示/标题收紧，正文放宽，小字紧凑 ---- */
+  /* ---- 行高阶梯：大字号收紧，正文放宽到 1.7，小字用 1.6 ---- */
   --lh-display: 1.15;
   --lh-title: 1.3;
   --lh-body: 1.7;
@@ -63,7 +63,7 @@ body {
   padding: 0;
 }
 
-/* 平滑滚动 + 结论卡锚点留白（自动滚动到结论时不顶边） */
+/* 滚动行为：平滑滚动，结论卡锚点偏移 24px，跳转后不贴顶边 */
 html {
   scroll-behavior: smooth;
 }
@@ -72,12 +72,12 @@ html {
   scroll-margin-top: 24px;
 }
 
-/* 文本选中：淡蓝底，保持黑白蓝体系 */
+/* 文本选中：16% 透明蓝底，叠加后仍可读正文 */
 ::selection {
   background: rgba(59, 130, 246, 0.16);
 }
 
-/* 键盘可达性：Tab 聚焦时有清晰的蓝色描边（输入框已有专属焦点态，不重复） */
+/* 键盘焦点：Tab 聚焦显示 2px 蓝色描边、偏移 2px；输入框已有 border 与 shadow 焦点态，此处不重复 */
 .btn:focus-visible,
 .example:focus-visible,
 .probe-select:focus-visible,
@@ -151,7 +151,7 @@ summary::-webkit-details-marker {
 
 .app {
   min-height: 100vh;
-  /* 移动端动态视口：避免 iOS 地址栏收展时底部留白 */
+  /* 移动端视口：100dvh 跟随地址栏收展，避免底部留白 */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -163,7 +163,7 @@ summary::-webkit-details-marker {
   margin: 0 auto;
   padding: 28px 32px 0;
   flex: 1;
-  /* 折叠区行号计数器（01 / 02 / 03） */
+  /* 折叠区行号计数器：输出 01、02、03 */
   counter-reset: fold-no;
 }
 
@@ -172,7 +172,7 @@ summary::-webkit-details-marker {
   grid-template-columns: minmax(0, 1.04fr) minmax(0, 0.96fr);
   gap: 0;
   align-items: stretch;
-  /* 表格化网格：单一 surface，黑色细线外框 + 中缝竖线（替代浮动卡片） */
+  /* 两栏网格：共用一层背景，1px 黑线外框与中缝竖线替代卡片阴影 */
   margin-top: 28px;
   border: 1px solid var(--rule);
   background: var(--card);
@@ -190,7 +190,7 @@ summary::-webkit-details-marker {
   }
 }
 
-/* 标题区：刊物式居中大标题（去规则线，靠留白与网格分区） */
+/* 标题区：文本居中，用外边距分区，不绘制分隔线 */
 
 .hero {
   position: relative;
@@ -209,7 +209,7 @@ summary::-webkit-details-marker {
   margin-bottom: 20px;
 }
 
-/* 大标题：应用名，刊物式居中 */
+/* 主标题：应用名，居中 */
 .hero-title {
   position: relative;
   font-size: var(--fs-display);
@@ -218,7 +218,7 @@ summary::-webkit-details-marker {
   letter-spacing: -0.035em;
 }
 
-/* 副标题：一句话说清它是什么 */
+/* 副标题：一句话说明用途，40em 限宽并用 balance 换行 */
 .hero-subtitle {
   position: relative;
   margin: 14px auto 0;
@@ -231,7 +231,7 @@ summary::-webkit-details-marker {
   text-wrap: balance;
 }
 
-/* 说明：具体能帮你做什么 */
+/* 补充说明：具体功能，36em 限宽 */
 .hero-sub {
   position: relative;
   margin: 16px auto 0;
@@ -244,7 +244,7 @@ summary::-webkit-details-marker {
   text-wrap: balance;
 }
 
-/* 出身行：一行说明，不加限宽强制断行 */
+/* 来源行：单行说明，56em 限宽，不强制断行 */
 .hero-origin {
   position: relative;
   margin: 14px auto 0;
@@ -347,13 +347,13 @@ textarea:hover {
   border-color: var(--line-strong);
 }
 
-/* 光标跟随主色：输入位置的视觉锚点 */
+/* 输入光标用主色，便于定位插入点 */
 input,
 textarea {
   caret-color: var(--blue);
 }
 
-/* 细滚动条：长列表与多行输入不显笨重 */
+/* 滚动条宽 8px，减少长列表与多行输入占用的横向空间 */
 textarea::-webkit-scrollbar,
 .raw-list::-webkit-scrollbar,
 .table-scroll::-webkit-scrollbar {
@@ -381,7 +381,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   gap: 8px;
 }
 
-/* 一键示例：放在输入区，首屏就能点到，点完直接出结论 */
+/* 示例入口：放在输入区内，首屏可见，点击后填充并计算 */
 .demo-entry {
   display: flex;
   align-items: center;
@@ -394,7 +394,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   flex: none;
 }
 
-/* 复制按钮的文案在「复制」与「已复制」间切换，固定最小宽度避免挤动同行按钮 */
+/* 复制按钮：文案在「复制」与「已复制」间切换，min-width 8.6em 固定宽度，避免同行按钮位移 */
 .copy-btn {
   min-width: 8.6em;
   justify-content: center;
@@ -404,7 +404,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   min-width: 6.6em;
 }
 
-/* 示例按钮：文字化（小字 + hover 蓝色下划线），中文用 sans */
+/* 示例按钮：文字按钮，14px 字号，悬停显示蓝色下划线，字体继承正文 */
 .example {
   display: inline-flex;
   align-items: center;
@@ -429,7 +429,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   border-bottom-color: var(--blue);
 }
 
-/* 实时字数：贴在示例行尾部，右对齐、等宽字体避免跳动 */
+/* 实时字数：行尾右对齐，tabular-nums 等宽数字避免计数变化时宽度抖动 */
 .char-count {
   margin-left: auto;
   font-family: var(--mono);
@@ -439,7 +439,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   white-space: nowrap;
 }
 
-/* 清空：与字数同处行尾，弱化为辅助操作，hover 才转蓝 */
+/* 清空按钮：与字数同处行尾，默认灰字，悬停转蓝，作为次要操作 */
 .clear-input {
   display: inline-flex;
   align-items: center;
@@ -465,7 +465,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   outline-offset: 2px;
 }
 
-/* 模型状态行：白底细线 + 左侧 2px 状态色条（蓝=就绪，灰=待处理） */
+/* 模型状态行：左侧 2px 色条表示状态，蓝色为就绪，灰色为待处理 */
 
 .ask-foot {
   display: flex;
@@ -526,7 +526,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   cursor: not-allowed;
 }
 
-/* 禁用态用中性灰面；文字保持可读，避免整块糊成一片 */
+/* 禁用态：灰底灰字，文字保持可读，不用整体透明度变淡 */
 .btn-primary:disabled {
   background: var(--sunken);
   border-color: var(--line);
@@ -558,7 +558,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-size: 14px;
 }
 
-/* 净省档位按钮：可选小方块，与卡片内的 sunken 面区分 */
+/* 档位按钮：小尺寸可选项，用 card 背景区别于 sunken 面 */
 .btn-chip {
   padding: 5px 10px;
   font-size: 13px;
@@ -579,7 +579,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--blue-dark);
 }
 
-/* 结论卡：与输入卡同顶对齐；不做 sticky，避免长结论超出视口后底部够不到 */
+/* 结论卡：与输入卡顶部对齐；不使用 sticky，避免长结论超出视口后底部操作不可达 */
 .result {
   padding: 24px 26px 20px;
   min-height: 420px;
@@ -624,7 +624,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-2);
 }
 
-/* 结论卡 kicker：蓝色圆点呼应 API 探测卡 */
+/* 结论卡眉标：前置 7px 蓝色圆点，与探测卡眉标一致 */
 .result .verdict-kicker::before {
   content: '';
   display: inline-block;
@@ -645,7 +645,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   margin: 0 2px;
 }
 
-/* 结论数字与导出动作 */
+/* 结论元信息与导出操作 */
 .result-meta {
   display: flex;
   flex-wrap: wrap;
@@ -662,7 +662,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--line-strong);
 }
 
-/* 窄屏：元信息改为两行，避免分隔符被折到行尾 */
+/* 窄屏 620px 以下：元信息纵向排列并隐藏分隔符，避免换行后落在行尾 */
 @media (max-width: 620px) {
   .result-meta {
     flex-direction: column;
@@ -738,7 +738,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-2);
 }
 
-/* 首屏一键示例：蓝底主按钮，直角、无阴影 */
+/* 首屏示例按钮：蓝底主按钮，直角无阴影，占满容器宽度 */
 .demo-cta {
   display: flex;
   flex-direction: column;
@@ -854,7 +854,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-3);
 }
 
-/* 空态里的内置参考数据 */
+/* 空态内置参考数据 */
 
 .builtin-table {
   display: grid;
@@ -917,7 +917,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-3);
 }
 
-/* 三步横条：刊物行式——透明底、黑色细线骨架、灰色衬线大序号、列间竖线 */
+/* 三步横条：透明底，上下 1px 黑线，列间 1px 竖线，序号用等宽字体 */
 
 .steps-strip {
   margin: 40px 0;
@@ -950,7 +950,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   padding-left: 22px;
 }
 
-/* 大序号：等宽数字，与折叠区编号同一轨道 */
+/* 大序号：等宽数字 24px，与折叠区序号使用同一字体 */
 .strip-no {
   font-family: var(--mono);
   font-size: 24px;
@@ -989,7 +989,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-3);
 }
 
-/* 折叠区：全宽行式手风琴——黑色细线分行，mono 自动序号（01 / 02 / 03） */
+/* 折叠区：全宽行式折叠，行间 1px 黑线，等宽字体自动序号（01 / 02 / 03） */
 
 .fold {
   counter-increment: fold-no;
@@ -1016,7 +1016,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   transition: color 0.18s;
 }
 
-/* 行首 mono 序号（刊物目录感） */
+/* 行首序号：等宽字体，decimal-leading-zero 补零到两位 */
 .fold > summary::before {
   content: counter(fold-no, decimal-leading-zero);
   margin-right: 18px;
@@ -1069,7 +1069,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   align-items: start;
 }
 
-/* 折叠区里的卡片保持轻量 */
+/* 折叠区内的卡片：min-width 0 允许收缩，防止网格列被内容撑破 */
 
 .step,
 .savings-card,
@@ -1219,7 +1219,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   background: var(--sunken);
 }
 
-/* 对比表：首列给定宽度，后两列数值右对齐且不换行 */
+/* 对比表：首列固定 22% 宽度，后两列数值右对齐且不换行 */
 .comparison-card .data-table th:first-child {
   width: 22%;
 }
@@ -1296,7 +1296,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink);
 }
 
-/* 芯片与提示 */
+/* 芯片与提示条 */
 
 .chip {
   display: inline-flex;
@@ -1376,7 +1376,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   transition: width 0.3s ease;
 }
 
-/* 探测中的不确定进度：蓝色条往复滑动（纯平色，无渐变） */
+/* 不确定进度：蓝条往复滑动，纯色无渐变 */
 
 .progress-fill {
   display: block;
@@ -1455,7 +1455,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-3);
 }
 
-/* 与折叠区一致的 +/− 指示，展开/收起位置不跳动 */
+/* 展开指示：与折叠区一致的加号与减号字符，切换时宽高不变，不引起布局位移 */
 .details > summary::after {
   content: '+';
   font-size: 16px;
@@ -1618,7 +1618,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   gap: 16px;
 }
 
-/* API 真实探测（常驻卡片）：一行主操作 + 一行对比，地址与模型按需展开 */
+/* API 探测卡：常驻显示，主操作与对比各占一行，地址与模型按需展开 */
 
 .probe {
   margin: 0 0 40px;
@@ -1652,7 +1652,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   line-height: var(--lh-compact);
 }
 
-/* 主操作行：服务商、Key、测量按钮同一行，窄屏自动落成三行 */
+/* 主操作行：服务商、Key、测量按钮同一行；窄屏断点下自动堆叠 */
 .probe-config {
   display: grid;
   gap: 10px;
@@ -1779,7 +1779,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   line-height: var(--lh-compact);
 }
 
-/* 字段标题行：右侧可放「显示 / 隐藏」这类轻量操作 */
+/* 字段标题行：左右分列，右侧放显示或隐藏等次要操作 */
 
 .field-head {
   display: flex;
@@ -1813,7 +1813,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   cursor: not-allowed;
 }
 
-/* 单一状态区：运行 / 连接 / 完成 / 取消 / 失败共用一套结构 */
+/* 状态区：运行、连接、完成、取消、失败共用同一结构，仅切换修饰类 */
 
 .probe-status {
   display: grid;
@@ -1873,7 +1873,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-variant-numeric: tabular-nums;
 }
 
-/* 状态行内的轻量操作：取消、再测一次 */
+/* 状态行内操作：取消与重测，与状态文本同行 */
 .probe-inline-action {
   margin-left: auto;
   padding: 0 2px;
@@ -1983,7 +1983,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   background: var(--rule);
 }
 
-/* 结果对比：一行放下当前来源、内置参考、实测值与差异 */
+/* 结果对比：当前来源、内置参考、实测值与差异在同一行排列 */
 
 .probe-compare {
   display: flex;
@@ -2163,7 +2163,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   accent-color: var(--blue);
 }
 
-/* 为什么 */
+/* 判定理由 */
 
 .why {
   margin-top: 20px;
@@ -2352,7 +2352,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     margin-top: 12px;
   }
 
-  /* 单列首屏：压缩输入高度，保证一键示例按钮稳定落在首屏内 */
+  /* 单列首屏：输入框高度压到 168px，保证示例按钮落在首屏内 */
   .input-text {
     min-height: 168px;
   }
@@ -2419,7 +2419,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     align-items: center;
   }
 
-  /* 防止 iOS 聚焦时自动放大页面（输入控件字号须 ≥16px） */
+  /* 防止 iOS 聚焦时自动放大页面：输入控件字号不小于 16px */
   input,
   select,
   textarea {
@@ -2432,7 +2432,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     font-size: 16px;
   }
 
-  /* 触控目标加高：示例按钮与下拉在拇指操作范围内 */
+  /* 触控目标：示例按钮与下拉加高到 40px 以上 */
   .example {
     padding: 8px 1px;
   }
@@ -2468,7 +2468,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     margin-top: 20px;
   }
 
-  /* 厂商预设改为下拉后，窄屏只需要保证触控高度 */
+  /* 厂商下拉：窄屏只保证 40px 触控高度 */
   .probe-select {
     min-height: 40px;
   }
@@ -2546,7 +2546,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     padding-left: 2px;
   }
 
-  /* 示例、清空、显示等行内小操作：统一高度，避免 2px 错位与过小触控区 */
+  /* 行内小操作：示例、清空、显示统一 40px 高度，避免对齐错位与触控区过小 */
   .example-row {
     row-gap: 8px;
   }
@@ -2559,7 +2559,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     padding: 0 2px;
   }
 
-  /* 窄屏字数紧跟示例，不再被推到第二行行尾形成孤点 */
+  /* 窄屏字数：取消 margin-left auto，紧跟示例，避免被推到第二行行尾 */
   .char-count {
     margin-left: 0;
   }
@@ -2573,7 +2573,7 @@ textarea::-webkit-scrollbar-thumb:hover,
     min-height: 40px;
   }
 
-  /* 对比表：窄屏改为逐条卡片，列标题跟随数值，不再横向挤压 */
+  /* 对比表：窄屏改为逐行卡片，列标题由 data-label 显示，避免横向滚动 */
   .comparison-card .table-scroll {
     overflow: visible;
   }
@@ -2627,7 +2627,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   }
 }
 
-/* 动效弱化偏好：关闭平滑滚动与往复进度动画 */
+/* 动效弱化偏好：关闭平滑滚动、往复进度与旋转动画 */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -2656,7 +2656,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   }
 }
 
-/* 渲染崩溃兜底：直角、无阴影、无渐变，仅用现有变量 */
+/* 渲染失败兜底页：仅使用 :root 已定义变量，不依赖组件样式 */
 .crash {
   min-height: 100vh;
   display: flex;
@@ -2694,16 +2694,16 @@ textarea::-webkit-scrollbar-thumb:hover,
 }
 
 /* ==================================================================
-   v26 统一层：Rust 组件的版面语言
-   结构线用黑，内容线用灰；数字等宽，中文一律 MiSans；
-   蓝色只出现在状态、焦点与结论，不铺面。
+   统一层：Rust 组件样式
+   结构线用 --rule，内容线用 --line；数字等宽，中文用 MiSans；
+   蓝色仅用于状态、焦点与结论，不做大面积背景。
    ================================================================== */
 
 .hidden {
   display: none !important;
 }
 
-/* ---- 输入卡：左侧强调色随画像来源变化 ---- */
+/* ---- 输入卡：左侧色条按数据来源切换 ---- */
 .ask-foot.builtin {
   border-left-color: var(--blue);
 }
@@ -2735,7 +2735,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   flex-wrap: wrap;
 }
 
-/* 旁注语气：越接近可行动结论，左侧竖线越实；颜色不承担语义之外的情绪 */
+/* 旁注：左侧竖线颜色表示结论接近程度，不叠加其他语义 */
 .note-line.lose {
   border-left-color: var(--ink-3);
 }
@@ -2753,7 +2753,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   border-left-color: var(--ink);
 }
 
-/* ---- 空态：把内置参考表沉到底部，与左侧输入卡对齐 ---- */
+/* ---- 空态：内置参考表固定在底部，与左侧输入卡底部对齐 ---- */
 .empty {
   display: flex;
   flex-direction: column;
@@ -2840,7 +2840,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   transform: translateY(-2px);
 }
 
-/* ---- 判断过程：四层做成目录行，命中项才点亮 ---- */
+/* ---- 判断过程：四层按行排列，命中行使用蓝色标记 ---- */
 .chain {
   list-style: none;
   margin: 10px 0 0;
@@ -2892,7 +2892,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-3);
 }
 
-/* 信号面板：两列对齐，标签低、数值高，副行占满 */
+/* 信号面板：两列网格，标签与数值基线对齐，副行横跨两列 */
 .signal-panel {
   margin-top: 16px;
   padding-top: 0;
@@ -3232,7 +3232,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   border-top: 1px solid var(--rule);
 }
 
-/* 成功态面板带蓝色底，内部线条随之变轻，避免黑线压过结论 */
+/* 成功态面板为蓝底，内部边框改用 --blue-line，避免黑线与背景对比过强 */
 .probe-status .probe-compare {
   border-top-color: var(--blue-line);
 }
@@ -3293,7 +3293,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--ink-3);
 }
 
-/* ---- 窄屏：先保可读，再压信息密度 ---- */
+/* ---- 窄屏断点：900px、720px、560px 逐级收窄网格 ---- */
 @media (max-width: 900px) {
   .cal-grid,
   .evidence-grid {
@@ -3343,8 +3343,8 @@ textarea::-webkit-scrollbar-thumb:hover,
 }
 
 /* ------------------------------------------------------------------ */
-/* v27 结论区：即时场景调节 + 净收益门槛条                              */
-/* 所有数字来自引擎的 net / threshold / gross / overhead，本层不造数。 */
+/* 结论区：场景档位与净收益门槛条 */
+/* 数值来自引擎输出的 net、threshold、gross、overhead，本层不做计算。 */
 /* ------------------------------------------------------------------ */
 
 .empty-demo-hint {
@@ -3452,7 +3452,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   transition: width 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
-/* 门槛条首次出现时从左展开；换档只走宽度过渡，不重复播放 */
+/* 门槛条首次出现时从左展开，换档只过渡宽度，不重播入场动画 */
 @keyframes gate-fill-in {
   from {
     transform: scaleX(0);
@@ -3479,7 +3479,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-size: 12px;
 }
 
-/* 结论首次出现时轻微上浮，避免整卡数字生硬跳变 */
+/* 结论首次出现时上浮 4px，避免数字直接闪现 */
 @keyframes verdict-in {
   from {
     opacity: 0;
@@ -3523,7 +3523,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   }
 }
 
-/* ---- v32 引导层：把「这是什么」改成「先做什么」 ---- */
+/* ---- 引导区：首屏操作与分组标签 ---- */
 
 .fold-lead {
   margin: 0 0 14px;
@@ -3544,7 +3544,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   margin-top: 0;
 }
 
-/* 空态：内置模型改成可点的一行，点完直接出结论 */
+/* 空态：内置模型每行可点，选中后直接计算 */
 .builtin-pick {
   margin: -2px 0 4px;
   font-size: 12px;
@@ -3591,7 +3591,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   outline-offset: 2px;
 }
 
-/* 校准区：当前模型结论放在最上面，先看结论再看方法 */
+/* 校准区：当前模型结论置顶，方法与参数在后 */
 .cal-current {
   display: grid;
   gap: 10px;
@@ -3684,7 +3684,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-size: 12px;
 }
 
-/* 内置比值列表：整行可点，当前模型有蓝色左线 */
+/* 内置比值列表：整行可点，当前模型用 2px 蓝色左线标记 */
 .ratio-bars li {
   display: block;
 }
@@ -3784,7 +3784,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   color: var(--blue-dark);
 }
 
-/* 数据来源：覆盖模型可点切换 */
+/* 数据来源：覆盖模型列表可点击切换 */
 .covered-row {
   padding: 0;
 }

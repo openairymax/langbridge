@@ -1,4 +1,4 @@
-//! 核心数据契约。纯类型，不含 DOM 与平台 API，Web / CLI / 代理共用。
+//! 核心数据契约。纯类型，不含 DOM 与平台 API，供 Web、CLI 与代理共用。
 
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +64,7 @@ pub enum Warning {
     ProbeDegraded,
 }
 
-/// 语言信号。单位统一为“质量”：中文按字符，英文按字符数 / 4.5。
+/// 语言信号。质量单位统一：中文按字符数，英文按字符数除以 4.5。
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Signals {
     pub lang: Lang,
@@ -360,7 +360,7 @@ pub struct FieldError {
     pub message: String,
 }
 
-/// 引擎统一错误：码 + 可直接展示的中文说明。
+/// 引擎统一错误，包含错误码与可直接展示的中文说明。
 #[derive(Debug, Clone)]
 pub struct EngineError {
     pub code: ErrorCode,

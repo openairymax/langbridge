@@ -1,5 +1,6 @@
 [package]
 name = "langbridge-cli"
+description = "推理语言网关的命令行：画像校准、路由决策、注入与本地代理"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

@@ -1,5 +1,7 @@
-// 本机 OpenAI 兼容代理（std::net::TcpListener + 线程池手写 HTTP/1.1，上游用 ureq 转发）
-// 注入语言约束、透传上游、后处理非流式输出、每 100 次触发周期校准；日志不含原文与 Key。
+//! 本机 OpenAI 兼容代理：用 TcpListener 与每连接一个线程手写 HTTP/1.1，上游经 ureq 转发。
+//!
+//! 职责包括注入语言约束、透传上游响应、对非流式输出做后处理，以及按请求计数触发周期校准。
+//! 日志只记录决策摘要，不包含请求原文与 API Key。
 
 use std::collections::{HashMap, HashSet};
 use std::io::{BufReader, Read, Write};
@@ -810,7 +812,7 @@ fn handle_chat(shared: &Arc<Shared>, stream: &mut TcpStream, req: &Request, cors
                     }
                     raw_stream.extend_from_slice(&buf[..n]);
                     if write_chunk(stream, &buf[..n]).is_err() {
-                        // 客户端断开：不再继续读取上游
+                        // 客户端断开后停止读取上游，避免无效等待。
                         client_gone = true;
                         break;
                     }

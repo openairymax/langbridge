@@ -1,4 +1,4 @@
-//! 校准样本：中英含义对齐的通用技术语句（避开专有名词）。
+//! 校准样本：中英含义对齐的通用技术语句，避免专有名词。
 //! N / 2N / 4N 三档共享同一段固定前导语，差分时固定开销被抵消。
 
 use crate::types::Lang;
@@ -32,7 +32,7 @@ pub const BODY_ZH: [&str; 10] = [
     "每增加一个依赖，都是一份持续维护的承诺，因此应优先选择解决问题的最小工具。",
 ];
 
-/// 三档语料规模
+/// 三档语料的重复次数。
 pub const SCALES: [u32; 3] = [1, 2, 4];
 
 pub fn body_text(lang: Lang, repeat: u32) -> String {
@@ -59,7 +59,7 @@ pub fn build_sample(lang: Lang, repeat: u32) -> String {
     format!("{}{}{}", preamble, sep, body_text(lang, repeat))
 }
 
-/// 中文按每份 120 字计；英文按实际词数
+/// 中文按每份 120 字计，英文按实际词数计。
 pub fn word_count(lang: Lang, repeat: u32) -> usize {
     match lang {
         Lang::Zh => 120 * repeat as usize,

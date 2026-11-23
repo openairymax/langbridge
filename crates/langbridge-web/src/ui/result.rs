@@ -1,4 +1,4 @@
-//! 结论卡：空态示例、判决 headlines、节省判断、数字行、复制/下载、提示词后缀、判断过程。
+//! 结论卡：空态示例、结论标题、节省判断、数字行、复制与下载、提示词后缀、判断过程。
 
 use leptos::prelude::*;
 
@@ -80,7 +80,7 @@ fn EmptyState() -> impl IntoView {
     }
 }
 
-/// 与引擎数值口径一致：整数不带小数，其余保留原值。
+/// 格式化数字：整数不带小数，其余保留原值，与引擎输出保持一致。
 fn fmt_num(value: f64) -> String {
     if value.is_finite() && value.fract() == 0.0 {
         format!("{:.0}", value)
@@ -162,7 +162,7 @@ fn FilledResult() -> impl IntoView {
                         ().into_any()
                     }
                     SavingsStory::Below { .. } => {
-                        // 同上：净省与门槛已在结论段给出，避免同屏两遍。
+                        // 净省与门槛已在结论段给出，不在数字行重复。
                         ().into_any()
                     }
                     SavingsStory::Same { .. } => {
@@ -247,8 +247,8 @@ fn FilledResult() -> impl IntoView {
     }
 }
 
-/// 结论区的即时场景调节：换一档思考量，净收益与门槛条立刻重算。
-/// 只把引擎已经算出的 net / threshold / gross / overhead 画出来，不引入新公式。
+/// 结论区的思考量档位。切换后净收益与门槛条随评测重算。
+/// 只展示引擎算出的 net / threshold / gross / overhead，不在此处引入新公式。
 #[component]
 fn LiveGate() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();
@@ -299,7 +299,7 @@ fn LiveGate() -> impl IntoView {
             </div>
 
             {move || {
-                // 门槛条常驻：净收益为负时也保留占位，换档时结论区不再上下跳动。
+                // 门槛条常驻，净收益为负时也保留占位，切换档位时结论区不再上下跳动。
                 ctx.evaluation()
                     .savings
                     .clone()
@@ -345,7 +345,7 @@ fn LiveGate() -> impl IntoView {
     }
 }
 
-/// 判断过程：四层执行结果 + 信号面板。默认展开，避免结论没有依据。
+/// 判断过程：四层路由的执行结果与信号面板。默认展开，避免结论缺少依据。
 #[component]
 fn WhyThis() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();

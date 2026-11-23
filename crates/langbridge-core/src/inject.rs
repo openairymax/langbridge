@@ -1,5 +1,6 @@
-//! 语言约束 System Prompt。原生 reasoning 只用语言指令；
-//! 普通 chat 非流式可加双标签；流式绝不加标签。
+//! 语言约束 system prompt 的构造。
+//! 流式响应不追加双标签，非流式响应可追加。
+//! 用户 system prompt 已规定语言时跳过注入。
 
 use std::sync::OnceLock;
 
@@ -15,7 +16,7 @@ pub struct PromptOptions {
     pub reasoning_lang: Lang,
     pub output_lang: Lang,
     pub streaming: bool,
-    /// 是否追加双标签契约；默认非流式追加
+    /// 是否追加双标签契约，默认仅在非流式时追加
     pub use_tags: Option<bool>,
 }
 
@@ -27,7 +28,7 @@ pub struct BuiltPrompt {
     pub uses_tags: bool,
 }
 
-/// 双标签契约在输出侧包裹内容的四个标记
+/// 双标签契约在输出侧使用的四个标记
 const TAG_MARKERS: &str = "<thinking></thinking><answer></answer>";
 
 fn lang_name(lang: Lang) -> &'static str {
@@ -37,7 +38,7 @@ fn lang_name(lang: Lang) -> &'static str {
     }
 }
 
-/// 紧凑策略（≤40 tokens）
+/// 构造紧凑的语言约束提示词。
 pub fn build_system_prompt(opts: &PromptOptions) -> BuiltPrompt {
     let mut lines = vec![
         format!(
@@ -108,8 +109,8 @@ fn conflict_re() -> &'static Regex {
     CELL.get_or_init(|| Regex::new(&format!("(?i){}", CONFLICT_PATTERN)).expect("冲突正则应可编译"))
 }
 
-/// 只在用户“明确规定了回答或推理语言”时才判定冲突：
-/// 需要动词与语言名同现，避免把 “language model”“programming language” 误判。
+/// 仅在用户明确规定回答或推理语言时判定冲突。
+/// 需要动词与语言名同时出现，避免把 language model、programming language 误判。
 pub fn has_language_conflict(user_system_prompt: Option<&str>) -> bool {
     match user_system_prompt {
         Some(text) => conflict_re().is_match(text),
@@ -128,7 +129,7 @@ pub struct InjectionInput<'a> {
     pub streaming: bool,
 }
 
-/// 四态注入计划：injected / appended / skipped_conflict / disabled
+/// 四态注入计划：injected、appended、skipped_conflict、disabled。
 pub fn build_injection_plan(input: &InjectionInput<'_>) -> InjectionPlan {
     let target = input.routing.decided_lang;
     let disabled = |reason: String| InjectionPlan {
@@ -144,7 +145,7 @@ pub fn build_injection_plan(input: &InjectionInput<'_>) -> InjectionPlan {
         return disabled("非推理模型没有独立推理 token，语言约束无收益".to_string());
     }
 
-    // 冲突优先判定：无论收益是否过门槛，用户已规定语言时都不会注入
+    // 冲突优先：无论收益是否过门槛，用户已规定语言时不注入
     if has_language_conflict(input.user_system_prompt) {
         return InjectionPlan {
             state: InjectionState::SkippedConflict,
