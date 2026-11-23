@@ -6,13 +6,10 @@ use crate::types::{
     TokenizerMeta, Warning,
 };
 
-/// 线性度上限：二档增量相对一档增量的允许偏差，严格小于才判定为线性。
 pub const LINEAR_MAX_DEVIATION: f64 = 0.15;
 
-/// 校准置信度下限，低于该值不用于成本决策。
 pub const MIN_CONFIDENCE: f64 = 0.6;
 
-/// 每处理 100 次请求触发一次重新校准。
 pub const RECALIBRATE_EVERY: u64 = 100;
 
 #[derive(Debug, Clone, Copy)]
@@ -75,7 +72,6 @@ fn by_lang(obs: &[Observation], lang: Lang) -> Vec<Observation> {
     list
 }
 
-/// 由 6 条观测（每语言 3 档）计算校准结果；观测不足时报错。
 pub fn compute_calibration(
     obs: &[Observation],
     meta: &CalibrationMeta,
@@ -170,7 +166,6 @@ pub fn compute_calibration(
     })
 }
 
-/// 重跑一致性：两次密度比的绝对偏差超过 15% 判定为不稳定。
 pub fn compare_rerun(prev: &CalibrationResult, next: &CalibrationResult) -> (f64, bool) {
     if prev.density_ratio <= 0.0 {
         return (1.0, false);
@@ -183,7 +178,6 @@ pub fn should_recalibrate(tick_count: u64) -> bool {
     tick_count > 0 && tick_count % RECALIBRATE_EVERY == 0
 }
 
-/// 判断校准结果能否用于成本决策。
 pub fn calibration_usable(cal: &CalibrationResult) -> bool {
     cal.confidence >= MIN_CONFIDENCE
         && cal.linearity_ok

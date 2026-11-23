@@ -1,7 +1,4 @@
-//! 本地画像存储，默认位于 ~/.langbridge/<model>.json，可由 LANGBRIDGE_HOME 覆盖。
-//!
-//! 写入先落 .tmp 再 rename，避免中断留下半截文件；容量只统计 HOME 顶层的
-//! *.json 文件。
+//! 本地画像存储，默认位于 ~/.langbridge，写入先落 .tmp 再 rename。
 
 use std::collections::HashSet;
 use std::env;
@@ -16,7 +13,6 @@ use regex::Regex;
 
 use crate::args::js_parse_int;
 
-/// 画像数量默认上限，可由 LANGBRIDGE_PROFILE_MAX 覆盖。
 pub const PROFILE_CAPACITY_DEFAULT: i64 = 8;
 
 #[derive(Debug, Clone)]
@@ -115,7 +111,6 @@ pub fn read_profile(model_id: &str) -> Result<Option<ModelProfile>, CliError> {
     read_profile_file(&path).map(Some)
 }
 
-/// 写入前按目标容量整体校验，任一越界则整批拒绝。
 pub fn assert_profile_capacity(paths: &[PathBuf]) -> Result<(), CliError> {
     let unique: HashSet<&PathBuf> = paths.iter().collect();
     let missing = unique.iter().filter(|p| !p.exists()).count() as i64;
@@ -149,7 +144,6 @@ pub fn write_profile(profile: &ModelProfile, path: Option<&Path>) -> Result<Path
     Ok(target)
 }
 
-/// 批量写入：先整体容量校验，任一条越界则整批拒绝。
 pub fn write_profiles(profiles: &[ModelProfile]) -> Result<Vec<PathBuf>, CliError> {
     ensure_home()?;
     let paths: Vec<PathBuf> = profiles
@@ -167,7 +161,6 @@ pub fn write_profiles(profiles: &[ModelProfile]) -> Result<Vec<PathBuf>, CliErro
     Ok(paths)
 }
 
-/// 仅统计 HOME 顶层的 *.json 画像文件，不递归子目录。
 pub fn list_profile_files() -> Vec<PathBuf> {
     let dir = home_dir();
     let entries = match fs::read_dir(&dir) {
@@ -195,7 +188,6 @@ pub fn remove_profile(model_id: &str) -> Result<bool, CliError> {
     Ok(true)
 }
 
-/// 默认导出到 HOME/exports/，避免占用画像容量名额。
 pub fn export_path_for(profile: &ModelProfile) -> PathBuf {
     home_dir().join("exports").join(profile_file_name(profile))
 }

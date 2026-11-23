@@ -1,6 +1,4 @@
-//! 浏览器侧 API 探测：基于 fetch、AbortController 与 ReadableStream 读取响应。
-//! URL、鉴权、载荷、错误归类、usage 解析与差分校准在 `langbridge_core`；此处负责发请求、
-//! 读响应与超时取消。
+//! 浏览器侧 API 探测：基于 fetch 与 AbortController 发请求并读取响应。
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -21,7 +19,6 @@ use web_sys::{
 
 const NETWORK_ERROR_MESSAGE: &str = "连不上：常见原因是跨域（CORS）被拦截，或网络不通";
 
-/// 探测过程事件，逐步上报给界面显示进度与失败原因。
 #[derive(Debug, Clone)]
 pub enum ProbeEvent {
     Start { total: usize },
@@ -93,7 +90,6 @@ fn backoff_ms(attempt: u32) -> f64 {
 }
 
 fn http_date_ms(raw: &str) -> Option<f64> {
-    // RFC 1123: Wed, 21 Oct 2015 07:28:00 GMT
     let mut parts = raw.split_whitespace();
     let _weekday = parts.next()?;
     let day: i64 = parts.next()?.parse().ok()?;
@@ -121,7 +117,6 @@ fn http_date_ms(raw: &str) -> Option<f64> {
     if zone != "GMT" && zone != "UTC" {
         return None;
     }
-    // days_from_civil
     let y = year - if month <= 2 { 1 } else { 0 };
     let era = if y >= 0 { y } else { y - 399 } / 400;
     let yoe = y - era * 400;
@@ -299,7 +294,6 @@ async fn read_server_message(res: &Response) -> String {
     slice_utf16(&collapsed, 200).to_string()
 }
 
-/// 单次请求，超时与外部取消合并到同一个 AbortController。
 async fn fetch_once(
     url: &str,
     headers: &Headers,
@@ -457,7 +451,6 @@ async fn probe_prompt_tokens(
     }
 }
 
-/// 连接自检：发一个最小请求，判断 Key、Base URL、模型 ID 与跨域。
 pub async fn test_connection(opts: ProbeOptions) -> ConnectionCheck {
     let started = js_sys::Date::now();
     let step = ProbeStep {
@@ -485,7 +478,6 @@ pub async fn test_connection(opts: ProbeOptions) -> ConnectionCheck {
     }
 }
 
-/// API 探测校准。发固定 6 个请求，逐个上报进度。
 pub async fn calibrate_via_api(opts: ProbeOptions) -> Result<CalibrationResult, EngineError> {
     if langbridge_core::evidence::normalize_base(&opts.base_url).is_empty() {
         return Err(EngineError::new(ErrorCode::BadBaseUrl, "请填写 Base URL"));

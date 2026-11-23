@@ -1,6 +1,4 @@
-//! API 探测卡：默认只显示服务商与 Key，地址和模型收在二级面板。
-//! 主按钮负责开始与取消测量；下方按进度、逐条记录、内置参考对比的顺序展开。
-//! 失败时保留错误、建议与日志，便于直接重试。
+//! API 探测卡：服务商与 Key、连接测试、进度与结果对照。
 
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -39,7 +37,6 @@ pub fn ApiProbe() -> impl IntoView {
 
     let running = move || state().calibration.status == CalibrationStatus::Running;
 
-    // 配置变化后旧的连接结果作废，避免「连接正常」显示在新服务商上。
     let invalidate_check = move || {
         check_seq.update(|seq| *seq = seq.wrapping_add(1));
         check.set(None);
@@ -47,7 +44,6 @@ pub fn ApiProbe() -> impl IntoView {
         missing.set(None);
     };
 
-    // 顶部切换模型后，探测区的模型与连接状态同步更新。
     let global_model = Memo::new(move |_| state().model_id);
     let last_model = RwSignal::new(global_model.get_untracked());
     Effect::new(move |_| {
@@ -66,7 +62,6 @@ pub fn ApiProbe() -> impl IntoView {
             .and_then(|t| t.dyn_into::<web_sys::HtmlSelectElement>().ok())
             .map(|el| el.value())
             .unwrap_or_default();
-        // 选「自定义」时展开地址与模型；否则下拉会立即选中上一个服务商。
         if name == PROBE.provider_custom {
             endpoint_open.set(true);
             invalidate_check();
@@ -83,7 +78,6 @@ pub fn ApiProbe() -> impl IntoView {
     let on_endpoint_toggle = move |_| endpoint_open.update(|open| *open = !*open);
 
     let run = move |_| {
-        // 测量中同一个主按钮转为取消，避免多一个并排按钮。
         if running() {
             ctx.cancel_probe();
             return;
@@ -113,7 +107,6 @@ pub fn ApiProbe() -> impl IntoView {
         let ctx = ctx;
         wasm_bindgen_futures::spawn_local(async move {
             let result = ctx.check_connection_async(base, key, model).await;
-            // 期间改过配置就丢弃这次结果，避免旧连接状态覆盖新配置。
             if check_seq.get_untracked() == seq {
                 check.set(Some(result));
                 checking.set(false);
@@ -132,7 +125,6 @@ pub fn ApiProbe() -> impl IntoView {
         Some(_) => PROBE.source_builtin,
     };
 
-    // 分步状态 1 到 5 依次为：选服务商、填 Key、测连接、可测量、已完成。
     let measured_now = move || {
         let id = model_id.get().trim().to_string();
         state().measured.iter().any(|entry| entry.id == id)
@@ -421,7 +413,6 @@ pub fn ApiProbe() -> impl IntoView {
                 }
                 CalibrationStatus::Success => {
                     let calibration = calibration();
-                    // 载入内置参考也会把状态置为成功，但那不是实测；只有 API 测量才显示对照结果。
                     let measured = state()
                         .profile
                         .as_ref()
@@ -494,7 +485,6 @@ pub fn ApiProbe() -> impl IntoView {
     }
 }
 
-/// 内置参考与实测值对照。没有实测值时只显示内置参考。
 #[component]
 fn CompareRow() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();

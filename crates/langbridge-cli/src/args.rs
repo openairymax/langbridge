@@ -1,7 +1,4 @@
 //! 轻量参数解析，支持 `--key value`、`--key=value` 与无值开关。
-//!
-//! 不以 `--` 开头的参数按位置参数收集；无值的开关解析为 `Bool`，
-//! 同名参数后写覆盖先写。
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum FlagValue {
@@ -80,7 +77,6 @@ pub fn parse_args(argv: &[String]) -> ParsedArgs {
     out
 }
 
-/// 解析十进制浮点。空串返回 0，非法或非有限值返回 None。
 pub fn js_number(raw: &str) -> Option<f64> {
     let t = raw.trim();
     if t.is_empty() {
@@ -94,7 +90,6 @@ pub fn js_number(raw: &str) -> Option<f64> {
     }
 }
 
-/// 取前导十进制整数，忽略尾部非数字字符；没有数字时返回 None。
 pub fn js_parse_int(raw: &str) -> Option<i64> {
     let t = raw.trim();
     let mut chars = t.chars().peekable();

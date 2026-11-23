@@ -1,5 +1,4 @@
 //! 界面文案层：组件不内联业务文案，可见文本集中在这里。
-//! 结论句由评测结果与路由状态推导，数字取自引擎常量与画像，不在此处写死。
 
 use langbridge_core::calibrate::{LINEAR_MAX_DEVIATION, RECALIBRATE_EVERY};
 use langbridge_core::evidence::{evidence_meta, has_evidence, list_evidence_models, ProbeStep};
@@ -13,10 +12,6 @@ use langbridge_core::types::{
 };
 
 use crate::state::{Evaluation, ProfileHealth};
-
-/* ------------------------------------------------------------------ */
-/* 基础                                                               */
-/* ------------------------------------------------------------------ */
 
 pub fn lang_text(value: Lang) -> &'static str {
     match value {
@@ -118,10 +113,6 @@ pub fn thousands(n: i64) -> String {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 品牌 / 首屏                                                         */
-/* ------------------------------------------------------------------ */
-
 pub struct OriginCopy {
     pub org: &'static str,
     pub url: &'static str,
@@ -147,10 +138,6 @@ pub const HERO: HeroCopy = HeroCopy {
 };
 
 pub const OFFLINE_BADGE: &str = "全程在本机完成";
-
-/* ------------------------------------------------------------------ */
-/* 三步说明（档位来自 SCALES 数据）                                     */
-/* ------------------------------------------------------------------ */
 
 pub const STEPS_TITLE: &str = "它怎么判断";
 
@@ -182,10 +169,6 @@ pub fn steps() -> Vec<StepCopy> {
 
 pub const STEPS_NOTE: &str = "规则取自生产网关的四层实践，这里是本地版。";
 
-/* ------------------------------------------------------------------ */
-/* 空态                                                               */
-/* ------------------------------------------------------------------ */
-
 pub struct EmptyCopy {
     pub kicker: &'static str,
     pub hint: &'static str,
@@ -212,10 +195,6 @@ pub fn empty_builtin_hint() -> String {
     format!("中英同内容各测 {}，相减抵掉固定开销。", scales_txt())
 }
 
-/* ------------------------------------------------------------------ */
-/* 示例                                                               */
-/* ------------------------------------------------------------------ */
-
 pub struct DemoCopy {
     pub button: &'static str,
     pub hint: &'static str,
@@ -230,7 +209,6 @@ pub fn demo_hint(row_text: &str) -> String {
     format!("载入示例，直接看结论：{}", row_text)
 }
 
-/// 内置参考表的一行，由 ratio 实算方向与倍数。
 pub fn builtin_row_text(ratio: f64) -> String {
     let zh_bigger = ratio >= 1.0;
     let multiple = if zh_bigger { ratio } else { 1.0 / ratio };
@@ -240,10 +218,6 @@ pub fn builtin_row_text(ratio: f64) -> String {
         format!("英文 Token 是中文的 {} 倍", fmt2(multiple))
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 四层路由                                                           */
-/* ------------------------------------------------------------------ */
 
 pub struct LayerCopy {
     pub name: &'static str,
@@ -277,7 +251,6 @@ pub fn layer(layer: langbridge_core::types::RoutingLayer) -> &'static LayerCopy 
     }
 }
 
-/// 层状态词，按该层是否命中或终止返回。
 pub fn why_mark(step: Option<&RoutingStep>) -> &'static str {
     match step {
         Some(s) if s.hit => "起作用了",
@@ -297,7 +270,6 @@ fn decided_by_label(decided_by: DecidedBy) -> &'static str {
     }
 }
 
-/// 决策链页脚，拼接决定者与回答语言。
 pub fn chain_foot(routing: &Routing) -> String {
     format!(
         "{}决定 · 回答用{}",
@@ -316,10 +288,6 @@ pub const CHAIN: ChainCopy = ChainCopy {
     unevaluated: "未评估",
 };
 
-/* ------------------------------------------------------------------ */
-/* 章节 / 页脚                                                        */
-/* ------------------------------------------------------------------ */
-
 pub struct SectionCopy {
     pub calibration: &'static str,
     pub decision: &'static str,
@@ -331,10 +299,6 @@ pub const SECTION: SectionCopy = SectionCopy {
     decision: "判断与费用",
     evidence: "数据来源与进阶",
 };
-
-/* ------------------------------------------------------------------ */
-/* 提示词末尾追加                                                     */
-/* ------------------------------------------------------------------ */
 
 pub struct SuffixCopy {
     pub label: &'static str,
@@ -348,7 +312,6 @@ pub const SUFFIX: SuffixCopy = SuffixCopy {
     copy: "复制这句",
 };
 
-/// 生成追加到提示词末尾的指令，思考语言取路由决策，回答语言跟随输入。
 pub fn prompt_suffix(routing: &Routing) -> String {
     let think = lang_text(routing.decided_lang);
     let answer = lang_text(routing.output_lang);
@@ -374,10 +337,6 @@ pub const FOOTER: FooterCopy = FooterCopy {
     org: "OpenAirymax 开源极境",
     org_url: "https://atomgit.com/openairymax",
 };
-
-/* ------------------------------------------------------------------ */
-/* 输入区控件                                                         */
-/* ------------------------------------------------------------------ */
 
 pub struct UiCopy {
     pub ask_aria: &'static str,
@@ -462,7 +421,6 @@ impl UiCopy {
     }
 }
 
-/// 输入区按钮文案，按校准状态与画像来源选择。
 pub fn action_label(opts: &ActionLabelOpts) -> String {
     if opts.running {
         return UI.running.to_string();
@@ -487,10 +445,6 @@ pub struct ActionLabelOpts<'a> {
     pub method: Option<&'a str>,
     pub has_evidence: bool,
 }
-
-/* ------------------------------------------------------------------ */
-/* 信号面板                                                           */
-/* ------------------------------------------------------------------ */
 
 pub fn task_label(task: TaskType) -> &'static str {
     match task {
@@ -556,17 +510,12 @@ fn injection_state_key(state: InjectionState) -> &'static str {
     }
 }
 
-/// 注入状态摘要。
 pub fn inject_text(injection: Option<&InjectionPlan>) -> String {
     match injection {
         Some(plan) => format!("{} · {}", injection_state_key(plan.state), plan.reason),
         None => "无".to_string(),
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 模型行说明（builtin 指按公开 tokenizer 计数，不是服务端账单）        */
-/* ------------------------------------------------------------------ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ModelNoteKind {
@@ -719,10 +668,6 @@ pub fn model_note(evaluation: &Evaluation) -> ModelNote {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 中英对照条                                                         */
-/* ------------------------------------------------------------------ */
-
 pub struct RatioBarRow {
     pub key: Lang,
     pub label: &'static str,
@@ -737,7 +682,6 @@ pub struct RatioBarsView {
     pub aria: String,
 }
 
-/// 由观测数据生成比值条，取 N 最小的一档对比中英文计数。
 pub fn ratio_bars_view(cal: &CalibrationResult) -> Option<RatioBarsView> {
     if cal.observations.is_empty() {
         return None;
@@ -800,10 +744,6 @@ pub fn ratio_bars_view(cal: &CalibrationResult) -> Option<RatioBarsView> {
         ),
     })
 }
-
-/* ------------------------------------------------------------------ */
-/* 主结论                                                             */
-/* ------------------------------------------------------------------ */
 
 pub struct Verdict {
     pub kicker: String,
@@ -987,10 +927,6 @@ pub fn verdict_copy(evaluation: &Evaluation) -> Verdict {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 节省行                                                             */
-/* ------------------------------------------------------------------ */
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum SavingsStory {
     Save {
@@ -1168,7 +1104,6 @@ pub struct SaveLineParts {
     pub tail: String,
 }
 
-/// 结论卡的数字行，拆成前段与后段，中间的数字由调用方加粗显示。
 pub fn save_line_parts(story: &SavingsStory) -> Option<SaveLineParts> {
     match story {
         SavingsStory::Save {
@@ -1187,10 +1122,6 @@ pub fn save_line_parts(story: &SavingsStory) -> Option<SaveLineParts> {
         _ => None,
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 结论导出                                                           */
-/* ------------------------------------------------------------------ */
 
 pub struct ResultCopy {
     pub copy: &'static str,
@@ -1241,7 +1172,6 @@ pub fn result_ratio_text(ratio: Option<f64>) -> String {
     }
 }
 
-/// 结果卡数字行。只有过门槛才报净省，未过门槛时给出可省额度与门槛。
 pub fn result_net_text(savings: Option<&SavingsResult>) -> String {
     let Some(s) = savings else {
         return format!("{} {}", RESULT.net_label, RESULT.not_applicable);
@@ -1264,7 +1194,6 @@ pub fn result_net_text(savings: Option<&SavingsResult>) -> String {
     format!("{} {} Token", RESULT.net_loss, js_num(s.net.abs()))
 }
 
-/// 可整段复制的纯文本结论。
 pub fn result_summary_text(evaluation: &Evaluation, generated_at: &str) -> String {
     let verdict = verdict_copy(evaluation);
     let story = savings_story(evaluation);
@@ -1280,10 +1209,6 @@ pub fn result_summary_text(evaluation: &Evaluation, generated_at: &str) -> Strin
     ]
     .join("\n")
 }
-
-/* ------------------------------------------------------------------ */
-/* 费用明细                                                           */
-/* ------------------------------------------------------------------ */
 
 pub const SAVING_TITLE: &str = "费用明细";
 
@@ -1313,13 +1238,7 @@ pub fn r_auto_label(r: f64) -> String {
     format!("按这个问题估 {}", js_num(r))
 }
 
-/// 思考量的手动快捷档位。引擎的 TASK_BASE_R 是按任务类型的基准值，还要乘模型系数
-/// 才得到自动估算的 R，且该常量未导出；这里只提供常见档位，结论仍以引擎实算为准。
 pub const R_PRESETS: [f64; 3] = [800.0, 1200.0, 3000.0];
-
-/* ------------------------------------------------------------------ */
-/* 适用性                                                             */
-/* ------------------------------------------------------------------ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Tone {
@@ -1343,7 +1262,6 @@ pub struct Applicability {
     pub tone: Tone,
 }
 
-/// 适用性徽章，按画像状态与路由结果给出标签与色调。
 pub fn applicability(evaluation: &Evaluation) -> Applicability {
     let model = &evaluation.model;
     let routing = &evaluation.routing;
@@ -1427,7 +1345,6 @@ pub fn applicability(evaluation: &Evaluation) -> Applicability {
     }
 }
 
-/// 无 savings 时的说明，有效期天数取自引擎常量。
 pub fn savings_blocked_notice(evaluation: &Evaluation) -> String {
     let routing = &evaluation.routing;
     let status = &evaluation.profile_status;
@@ -1471,7 +1388,6 @@ pub fn savings_blocked_notice(evaluation: &Evaluation) -> String {
     "还没有可用的参考数据，算不出费用。先点上方「载入参考数据」。".to_string()
 }
 
-/// 门槛公式文案。阈值取自画像 policy，缺省用引擎常量。
 pub fn threshold_text(evaluation: &Evaluation) -> String {
     let (tokens, pct) = match evaluation.profile.as_ref() {
         Some(p) => (p.policy.switch_threshold_tokens, p.policy.switch_threshold_pct),
@@ -1487,7 +1403,6 @@ pub fn threshold_text(evaluation: &Evaluation) -> String {
     )
 }
 
-/// 费用公式明细，数字取自 savings 与注入计划。
 pub fn formula_lines(evaluation: &Evaluation) -> Vec<String> {
     let Some(s) = evaluation.savings.as_ref() else {
         return Vec::new();
@@ -1544,10 +1459,6 @@ pub fn inject_reason_suffix(reason: &str) -> String {
     format!("（{}）", reason)
 }
 
-/* ------------------------------------------------------------------ */
-/* 三路对比                                                           */
-/* ------------------------------------------------------------------ */
-
 pub struct ComparisonCopy {
     pub title: &'static str,
     pub head: [&'static str; 4],
@@ -1586,7 +1497,6 @@ fn delta_text(delta: f64, base: f64) -> String {
     format!("{}{}%", if delta > 0.0 { "+" } else { "" }, js_num(pct))
 }
 
-/// 三路对比。三行使用同一任务、同一 R 与同一成本比口径。
 pub fn comparison_view(evaluation: &Evaluation) -> Option<ComparisonView> {
     let signals = &evaluation.signals;
     let routing = &evaluation.routing;
@@ -1663,7 +1573,6 @@ pub fn comparison_view(evaluation: &Evaluation) -> Option<ComparisonView> {
     })
 }
 
-/// 不可对比时的原因。
 pub fn comparison_blocked_reason(evaluation: &Evaluation) -> String {
     let status = &evaluation.profile_status;
     let builtin = evaluation
@@ -1683,10 +1592,6 @@ pub fn comparison_blocked_reason(evaluation: &Evaluation) -> String {
     }
     "还没有可用的参考数据，算不出费用，没有对比。".to_string()
 }
-
-/* ------------------------------------------------------------------ */
-/* 校准面板                                                           */
-/* ------------------------------------------------------------------ */
 
 pub struct CalMetricsCopy {
     pub r2: &'static str,
@@ -1831,10 +1736,6 @@ impl CalCopy {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 画像面板                                                           */
-/* ------------------------------------------------------------------ */
-
 pub struct ProfileCopy {
     pub title: &'static str,
     pub migrate_chip: &'static str,
@@ -1890,10 +1791,6 @@ pub static PROFILE: std::sync::LazyLock<ProfileCopy> = std::sync::LazyLock::new(
     expired_notice_measured: "测量太久远了：重新测一次之前，不会给出费用结论。",
 });
 
-/* ------------------------------------------------------------------ */
-/* 数据来源 / 进阶设置                                                 */
-/* ------------------------------------------------------------------ */
-
 pub struct EvidenceCopy {
     pub gen_at: &'static str,
     pub covered_summary: &'static str,
@@ -1910,7 +1807,6 @@ pub struct EvidenceCopy {
 }
 
 impl EvidenceCopy {
-    /// tokenizer 说明。全部为公开计数时直说，含同系列代算时在文案里标注。
     pub fn tokenizer_mixed(&self) -> &'static str {
         if evidence_meta()
             .tokenizers
@@ -1946,7 +1842,6 @@ pub const EVIDENCE: EvidenceCopy = EvidenceCopy {
     record_summary: "决策记录（DecisionRecord）",
 };
 
-/// 已知限制列表。覆盖模型数由调用方传入，tokenizer 清单取自证据元数据。
 pub fn limitations(covered_count: usize) -> Vec<String> {
     let meta = evidence_meta();
     let mut tokenizers: Vec<String> = Vec::new();
@@ -1978,10 +1873,6 @@ pub fn limitations(covered_count: usize) -> Vec<String> {
     }
     items
 }
-
-/* ------------------------------------------------------------------ */
-/* API 探测                                                           */
-/* ------------------------------------------------------------------ */
 
 pub struct Preset {
     pub name: &'static str,
@@ -2188,10 +2079,6 @@ impl ProbeCopy {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 存储与崩溃兜底                                                      */
-/* ------------------------------------------------------------------ */
-
 pub struct StorageCopy {
     pub unavailable: &'static str,
     pub profile_not_saved: &'static str,
@@ -2228,10 +2115,6 @@ pub const CRASH: CrashCopy = CrashCopy {
     clear: "清除本地记录并重载",
     clear_confirm: "确认清除本机保存的画像与设置？此操作不可撤销。",
 };
-
-/* ------------------------------------------------------------------ */
-/* 进阶设置                                                           */
-/* ------------------------------------------------------------------ */
 
 pub struct AdvancedCopy {
     pub inject_title: &'static str,
@@ -2271,10 +2154,6 @@ pub const ADVANCED: AdvancedCopy = AdvancedCopy {
     post_polish_off: "意译润色：流式模式只统计不改写",
 };
 
-/* ------------------------------------------------------------------ */
-/* 校准状态徽章                                                       */
-/* ------------------------------------------------------------------ */
-
 pub fn evidence_version_badge(version: u32) -> String {
     format!("数据 v{}", version)
 }
@@ -2286,10 +2165,6 @@ pub fn evidence_count() -> usize {
 pub fn evidence_generated_at() -> String {
     evidence_meta().generated_at
 }
-
-/* ------------------------------------------------------------------ */
-/* 操作引导                                                           */
-/* ------------------------------------------------------------------ */
 
 pub struct FlowCopy {
     pub empty_pick: &'static str,

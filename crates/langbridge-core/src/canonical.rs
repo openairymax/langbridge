@@ -39,7 +39,6 @@ pub struct CanonicalInput<'a> {
     pub created_at: String,
 }
 
-/// transformed_input 与 raw_input 相同：规范化不改写输入。
 pub fn build_canonical_request(input: CanonicalInput<'_>) -> CanonicalRequest {
     let telemetry = Telemetry {
         request_id: input.request_id.clone(),

@@ -1,7 +1,4 @@
-//! Web 状态层：唯一的应用状态、由状态派生的评测与动作入口。
-//! 业务计算全部在 `langbridge_core`，这里只持有状态并调度动作。
-//! 探测结果带世代号，换模型或重新发起后到达的旧结果一律丢弃。
-//! localStorage 读写失败在调用点降级并提示，不阻断界面。
+//! Web 状态层：唯一的应用状态、派生评测与动作入口。
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -29,15 +26,9 @@ use crate::probe::{calibrate_via_api, test_connection, ConnectionCheck, ProbeEve
 
 pub const UI_KEY: &str = "langbridge.ui.v3";
 pub const PROFILE_KEY: &str = "langbridge.profile.v3";
-/// 实测模型清单。只记录模型名与比值，画像本体按模型分键存储。
 pub const MEASURED_KEY: &str = "langbridge.measured.v3";
 const MEASURED_LIMIT: usize = 12;
-/// 持久化文本上限。超出部分不写入 localStorage，避免大文本拖慢启动时的反序列化。
 pub const MAX_PERSISTED_TEXT: usize = 100_000;
-
-/* ------------------------------------------------------------------ */
-/* 评测结果                                                           */
-/* ------------------------------------------------------------------ */
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProfileHealth {
@@ -69,7 +60,6 @@ pub struct Evaluation {
 }
 
 impl PartialEq for Evaluation {
-    /// 只比较影响结论与展示的字段，避免无关状态变化触发重渲染。
     fn eq(&self, other: &Self) -> bool {
         self.model.model_id == other.model.model_id
             && self.signals.lang == other.signals.lang
@@ -112,7 +102,6 @@ pub fn profile_status(profile: Option<&ModelProfile>, now: i64) -> ProfileStatus
             None
         }
     };
-    // 内置参考数据永不因时间判为过期；实测仍按有效期判断。
     let builtin = profile.measurement.method == ProfileSource::Builtin;
     if !builtin && is_profile_expired(profile, now) {
         return ProfileStatus {
@@ -136,7 +125,6 @@ pub fn profile_status(profile: Option<&ModelProfile>, now: i64) -> ProfileStatus
 }
 
 pub fn select_model(state: &AppState) -> ModelMeta {
-    // API 探测得到的模型可能不在内置列表，用启发式元数据兜底，保证画像仍可用。
     meta_for(
         &state.model_id,
         state.profile.as_ref().map(|p| p.measurement.effective_ratio),
@@ -214,10 +202,6 @@ pub fn select_record(_state: &AppState, evaluation: &Evaluation) -> DecisionReco
     )
 }
 
-/* ------------------------------------------------------------------ */
-/* 状态                                                               */
-/* ------------------------------------------------------------------ */
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CalibrationStatus {
     Idle,
@@ -274,7 +258,6 @@ pub struct CalibrationState {
     pub step: Option<ProbeProgress>,
     pub log: Vec<ProbeLogItem>,
     pub hint: Option<String>,
-    /// 本次探测的目标模型。切换模型后置空，迟到的结果据此丢弃。
     pub target_model_id: Option<String>,
 }
 
@@ -331,7 +314,6 @@ pub enum TabId {
     Advanced,
 }
 
-/// 一条实测记录，用于模型下拉与「我的测量」分组。不含 Key，也不含请求内容。
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MeasuredEntry {
     pub id: String,
@@ -345,9 +327,7 @@ pub struct AppState {
     pub model_id: String,
     pub text: String,
     pub streaming: bool,
-    /// 手动覆盖的预期推理规模；None 表示按任务自动估算。
     pub r_override: Option<f64>,
-    /// API 探测卡记住的 Base URL（Key 不入存储）。
     pub probe_base_url: String,
     pub user_system_prompt: String,
     pub signals: Option<Signals>,
@@ -358,7 +338,6 @@ pub struct AppState {
     pub import_errors: Option<Vec<FieldError>>,
     pub storage_warning: Option<String>,
     pub migrated: bool,
-    /// 本机实测过的模型，供模型下拉直接切换。
     pub measured: Vec<MeasuredEntry>,
 }
 
@@ -383,10 +362,6 @@ impl Default for AppState {
         }
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 偏好持久化                                                          */
-/* ------------------------------------------------------------------ */
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 struct UiPrefs {
@@ -424,10 +399,6 @@ fn load_prefs() -> UiPrefs {
     prefs
 }
 
-/* ------------------------------------------------------------------ */
-/* 画像存取（localStorage）                                            */
-/* ------------------------------------------------------------------ */
-
 fn profile_key(model_id: &str) -> String {
     format!("{PROFILE_KEY}.{model_id}")
 }
@@ -439,7 +410,6 @@ fn parse_for(raw: &str, model_id: &str) -> Option<ModelProfile> {
         .filter(|profile| profile.model.model_id == model_id)
 }
 
-/// 先读按模型分键保存的画像，再回退到旧版共用的键，兼容早期版本写入的数据。
 pub fn load_profile(model_id: &str) -> Option<ModelProfile> {
     if let Some(raw) = io::get_item(&profile_key(model_id)) {
         if let Some(profile) = parse_for(&raw, model_id) {
@@ -453,7 +423,6 @@ pub fn save_profile(profile: &ModelProfile) -> bool {
     let raw = serialize_profile(profile);
     let model_id = &profile.model.model_id;
     let saved = io::set_item(&profile_key(model_id), &raw);
-    // 旧键继续写入当前画像，兼容早期版本读取。
     io::set_item(PROFILE_KEY, &raw);
     if profile.measurement.method == langbridge_core::types::ProfileSource::ApiProbe {
         register_measured(profile);
@@ -476,7 +445,6 @@ pub fn clear_profile(model_id: &str) {
     }
 }
 
-/// 读取本机实测清单。数据损坏时返回空清单。
 pub fn load_measured() -> Vec<MeasuredEntry> {
     let Some(raw) = io::get_item(MEASURED_KEY) else {
         return Vec::new();
@@ -484,7 +452,6 @@ pub fn load_measured() -> Vec<MeasuredEntry> {
     let Ok(mut list) = serde_json::from_str::<Vec<MeasuredEntry>>(&raw) else {
         return Vec::new();
     };
-    // 清单只保留确实存在实测画像的条目，避免下拉出现指向已不存在画像的选项。
     list.retain(|entry| {
         !entry.id.is_empty()
             && entry.ratio.is_finite()
@@ -519,10 +486,6 @@ fn register_measured(profile: &ModelProfile) {
     list.truncate(MEASURED_LIMIT);
     save_measured(&list);
 }
-
-/* ------------------------------------------------------------------ */
-/* 应用上下文与动作                                                    */
-/* ------------------------------------------------------------------ */
 
 #[derive(Clone, Copy)]
 pub struct AppCtx {
@@ -562,14 +525,11 @@ impl AppCtx {
             s.import_errors = None;
             s.migrated = false;
         });
-        // 缓存的信号可能滞后于文本，切换模型后按当前文本重算。
         let text = self.state.get_untracked().text;
         let signals = extract_signals(&text, "");
         self.state.update(|s| s.signals = Some(signals));
     }
 
-    /// 载入示例：填入英文示例文本，切到有独立思考且带内置证据的模型，并载入参考数据。
-    /// 只有推理模型会显示净收益与门槛两条横条。
     pub fn load_demo(&self) {
         let example = crate::data::EXAMPLES
             .iter()
@@ -580,14 +540,12 @@ impl AppCtx {
             if id != self.state.get_untracked().model_id {
                 self.set_model(id.clone());
             }
-            // 已有画像时保留已有测量结果，不用内置参考覆盖。
             if load_profile(&id).is_none() {
                 self.calibrate(Some(id));
             }
         }
     }
 
-    /// 空态里点某个内置模型：切过去并载入内置参考，没有输入时补一条能出结论的示例。
     pub fn load_model_demo(&self, model_id: String) {
         if self.state.get_untracked().text.trim().is_empty() {
             let example = crate::data::EXAMPLES
@@ -599,7 +557,6 @@ impl AppCtx {
         if model_id != self.state.get_untracked().model_id {
             self.set_model(model_id.clone());
         }
-        // 只有没有画像且确有内置证据时才载入参考，避免覆盖已有实测结果。
         if load_profile(&model_id).is_none()
             && langbridge_core::evidence::has_evidence(&model_id)
         {
@@ -631,7 +588,6 @@ impl AppCtx {
         self.state.update(|s| s.show_raw = !s.show_raw);
     }
 
-    /// 用内置证据做一次同步校准，不发网络请求。
     pub fn calibrate(&self, target: Option<String>) {
         let state_signal = self.state;
         let current = state_signal.get_untracked();
@@ -666,7 +622,6 @@ impl AppCtx {
         apply_success(state_signal, profile, rerun);
     }
 
-    /// 用 API 真实探测校准。逐条上报进度，可中途取消。
     pub fn calibrate_api(&self, base_url: String, api_key: String, model_id: String) {
         let state_signal = self.state;
         let generation = bump_generation();
@@ -683,7 +638,6 @@ impl AppCtx {
                 if current_generation() != target_generation {
                     return;
                 }
-                // 用户取消后不再接收迟到的步骤事件，避免红色失败行。
                 if state_signal.get_untracked().calibration.status
                     != CalibrationStatus::Running
                 {
@@ -816,7 +770,6 @@ impl AppCtx {
                             ProbeLogStatus::Info,
                             PROBE.log_cancelled(done, total),
                         );
-                        // 取消是用户主动操作，回到待机而不是红色错误态。
                         state_signal.update(|s| {
                             s.calibration.status = CalibrationStatus::Idle;
                             s.calibration.progress = 0.0;
@@ -858,7 +811,6 @@ impl AppCtx {
         api_key: String,
         model_id: String,
     ) -> ConnectionCheck {
-        // 只发一个最小请求，8 秒超时足以区分地址、Key 与跨域问题。
         test_connection(ProbeOptions {
             base_url,
             api_key,
@@ -873,7 +825,6 @@ impl AppCtx {
     }
 
     pub fn import_profile(&self, text: &str) {
-        // 导入会替换画像，先让正在跑的探测失效，避免迟到结果覆盖导入内容。
         bump_generation();
         abort_probe();
         let parsed = parse_profile_file(text, langbridge_core::now_ms());
@@ -906,7 +857,6 @@ impl AppCtx {
     }
 
     pub fn reset_profile(&self) {
-        // 删除同样要终止进行中的探测，否则结果会在删除后写回。
         bump_generation();
         abort_probe();
         let current = self.state.get_untracked();
@@ -938,7 +888,6 @@ fn rerun_diff(prev: &CalibrationResult, next: &CalibrationResult) -> RerunDiff {
 
 fn apply_success(state: RwSignal<AppState>, profile: ModelProfile, rerun: Option<RerunDiff>) {
     let model_id = profile.model.model_id.clone();
-    // 先确认结果属于本次探测目标，再写存储，避免迟到结果落到已切换的模型上。
     let target_ok = state
         .get_untracked()
         .calibration
@@ -953,14 +902,12 @@ fn apply_success(state: RwSignal<AppState>, profile: ModelProfile, rerun: Option
     state.update(|s| {
         s.profile = Some(profile);
         s.model_id = model_id;
-        // 新画像生效后清掉手动比值，避免旧试算值遮住真实测量结果。
         s.r_override = None;
         s.storage_warning = if saved {
             None
         } else {
             Some(STORAGE.profile_not_saved.to_string())
         };
-        // 再测一致性时停留在校准页展示偏差，首次校准则进入决策。
         s.tab = if rerun.is_some() {
             TabId::Calibrate
         } else {
@@ -994,10 +941,6 @@ fn next_log(seq: &Rc<Cell<u32>>) -> u32 {
     next
 }
 
-/* ------------------------------------------------------------------ */
-/* 探测取消：世代号与 AbortController                                  */
-/* ------------------------------------------------------------------ */
-
 thread_local! {
     static GENERATION: Cell<u32> = const { Cell::new(0) };
     static CONTROLLER: RefCell<Option<web_sys::AbortController>> = const { RefCell::new(None) };
@@ -1030,10 +973,6 @@ fn abort_probe() -> Option<web_sys::AbortController> {
 pub fn install_controller(controller: web_sys::AbortController) {
     CONTROLLER.with(|slot| *slot.borrow_mut() = Some(controller));
 }
-
-/* ------------------------------------------------------------------ */
-/* 初始状态与副作用                                                    */
-/* ------------------------------------------------------------------ */
 
 pub fn create_initial_state() -> AppState {
     let prefs = load_prefs();
@@ -1081,7 +1020,6 @@ fn persist_prefs(state: &AppState) -> Result<(), ()> {
     if io::set_item(UI_KEY, &json) {
         return Ok(());
     }
-    // 配额不足可能是 text 超出上下文，丢掉 text 重试，保留模型与地址的配置。
     let fallback = UiPrefs {
         model_id: prefs.model_id,
         r_override: prefs.r_override,
@@ -1094,7 +1032,6 @@ fn persist_prefs(state: &AppState) -> Result<(), ()> {
     }
 }
 
-/// 创建应用状态并安装副作用：文本转信号、偏好持久化、存储告警自动收起。
 pub fn install_app_state() -> AppCtx {
     let state = RwSignal::new(create_initial_state());
     let evaluation = Memo::new(move |_| {
@@ -1102,7 +1039,6 @@ pub fn install_app_state() -> AppCtx {
         select_evaluation(&snapshot, langbridge_core::now_ms())
     });
 
-    // 文本转信号，120ms 防抖：停止输入后才重算。
     Effect::new({
         let state = state;
         move |_| {
@@ -1125,7 +1061,6 @@ pub fn install_app_state() -> AppCtx {
         }
     });
 
-    // UI 偏好与输入文本持久化（300ms 防抖，避免每个键击都写 localStorage）。
     let warned = Rc::new(Cell::new(false));
     let warn_timer = Rc::new(RefCell::new(None::<gloo_timers::callback::Timeout>));
     Effect::new({
@@ -1154,7 +1089,6 @@ pub fn install_app_state() -> AppCtx {
                             state.update(|s| {
                                 s.storage_warning = Some(STORAGE.unavailable.to_string())
                             });
-                            // 约 8 秒后自动收起，避免永久占住顶部提示。
                             *warn_timer.borrow_mut() = Some(gloo_timers::callback::Timeout::new(
                                 8000,
                                 move || {
@@ -1178,12 +1112,10 @@ pub fn install_app_state() -> AppCtx {
     AppCtx { state, evaluation }
 }
 
-/// setTimeout 的薄封装：不保留句柄，回调触发后自行释放。
 fn set_timeout<F: FnOnce() + 'static>(f: F, after: std::time::Duration) {
     gloo_timers::callback::Timeout::new(after.as_millis() as u32, f).forget();
 }
 
-/// 比较两组信号是否等价，避免副作用写入后再次触发自身。
 fn signals_equal(a: &Signals, b: &Signals) -> bool {
     a.lang == b.lang
         && a.task == b.task
@@ -1198,12 +1130,10 @@ fn signals_equal(a: &Signals, b: &Signals) -> bool {
         && a.en_mass == b.en_mass
 }
 
-/// 把 Lang 转成界面展示的语言名。
 pub fn lang_name(value: Lang) -> &'static str {
     lang_text(value)
 }
 
-/// 数据来源的稳定键，用于按钮文案与类名，不用于展示。
 pub fn source_key(source: ProfileSource) -> &'static str {
     match source {
         ProfileSource::Builtin => "builtin",

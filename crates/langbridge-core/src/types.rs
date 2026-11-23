@@ -360,7 +360,6 @@ pub struct FieldError {
     pub message: String,
 }
 
-/// 引擎统一错误，包含错误码与可直接展示的中文说明。
 #[derive(Debug, Clone)]
 pub struct EngineError {
     pub code: ErrorCode,

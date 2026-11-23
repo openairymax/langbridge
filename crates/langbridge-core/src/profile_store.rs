@@ -1,5 +1,4 @@
 //! 画像的纯逻辑部分：过期判定、内置数据检查与由校准重建画像。
-//! 存储由调用方实现。
 
 use serde_json::Value;
 
@@ -47,7 +46,6 @@ pub fn age_days(profile: &ModelProfile, now_ms: i64) -> f64 {
     }
 }
 
-/// 由已有校准结果重建画像。
 pub fn profile_from_calibration(
     model_id: &str,
     calibration: CalibrationResult,
@@ -67,8 +65,6 @@ pub fn profile_from_calibration(
     }
     profile
 }
-
-/* 导入 / 导出 */
 
 #[derive(Debug, Clone, Default)]
 pub struct ParseProfileResult {
@@ -131,7 +127,6 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
     match p.get("model").and_then(Value::as_object) {
         None => errors.push(err("model", "缺少 model")),
         Some(model) => {
-            // 允许 Azure 的斜杠与 Ollama 的冒号，首字符必须为字母或数字
             let model_id = model.get("model_id").and_then(Value::as_str).map(str::trim);
             let id_ok = model_id
                 .map(|id| {
@@ -518,7 +513,6 @@ fn migrate_v2(value: &Value, now_ms: i64) -> ParseProfileResult {
     }
 }
 
-/// 解析导入文件，支持 v3 与 v2 自动迁移。
 pub fn parse_profile_file(text: &str, now_ms: i64) -> ParseProfileResult {
     let value: Value = match serde_json::from_str(text) {
         Ok(v) => v,

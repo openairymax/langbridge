@@ -1,6 +1,4 @@
 //! 内置证据与 API 探测的纯逻辑部分。
-//! 网络请求由调用方发起，本模块只处理 URL 归一化、鉴权头、状态码归类、
-//! 载荷自适应、usage 解析与差分校准。
 
 use std::sync::OnceLock;
 
@@ -126,8 +124,6 @@ pub fn calibrate_from_evidence(model_id: &str) -> Result<CalibrationResult, Engi
     Ok(cal)
 }
 
-/* URL 与鉴权 */
-
 fn scheme_re() -> &'static Regex {
     static CELL: OnceLock<Regex> = OnceLock::new();
     CELL.get_or_init(|| Regex::new(r"^([a-z][a-z0-9+.-]*):/+").unwrap())
@@ -193,7 +189,6 @@ pub fn normalize_base(base_url: &str) -> String {
         url.set_path(&path);
         return url.to_string();
     }
-    // 华为云 ModelArts MaaS 的 OpenAI 兼容前缀是 /openai/v1
     if url
         .host_str()
         .map(|h| h.eq_ignore_ascii_case("api.modelarts-maas.com"))
@@ -257,8 +252,6 @@ pub fn request_target(base_url: &str, api_key: &str) -> Result<RequestTarget, En
     }
     Ok(RequestTarget { url, headers })
 }
-
-/* 错误归类 */
 
 pub fn classify_http(status: u16, server_message: &str) -> EngineError {
     let detail = if server_message.is_empty() {
@@ -507,7 +500,6 @@ pub struct ProbeStep {
     pub n: f64,
 }
 
-/// 固定 6 步：1、2、4 三档各测中英。
 pub fn probe_steps(base_n: f64) -> Vec<ProbeStep> {
     let total = SCALES.len() * 2;
     let mut steps = Vec::new();
@@ -526,12 +518,10 @@ pub fn probe_steps(base_n: f64) -> Vec<ProbeStep> {
     steps
 }
 
-/// 生成每一步使用的请求文本。
 pub fn step_sample(step: &ProbeStep, base_n: f64) -> String {
     build_sample(step.lang, (step.n / base_n) as u32)
 }
 
-/// 由探测观测生成校准结果。
 pub fn calibration_from_probe(
     observations: &[Observation],
     model_id: &str,

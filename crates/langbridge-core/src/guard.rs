@@ -1,5 +1,4 @@
 //! 输出后处理：标签解析、漂移检测、术语替换与空白归一。
-//! 流式响应只做统计，不改写内容。
 
 use std::sync::OnceLock;
 
@@ -55,7 +54,6 @@ pub struct DriftResult {
     pub threshold: f64,
 }
 
-/// 漂移阈值：期望语言纯度低于该值时判定漂移，仅记录不阻断。
 pub const DRIFT_THRESHOLD: f64 = 0.6;
 
 pub fn detect_drift(text: &str, expected: Lang, threshold: f64) -> DriftResult {
@@ -149,7 +147,6 @@ fn polish_text(text: &str) -> String {
     lets.replace_all(&s, "我们").into_owned()
 }
 
-/// 文本润色：归一空白、清理中英文间距与重复虚词。仅在非流式输出上执行。
 pub fn polish(text: &str) -> String {
     split_code_segments(text)
         .into_iter()
@@ -180,13 +177,11 @@ pub struct PostprocessResult {
 
 pub fn postprocess(raw: &str, opts: &PostprocessOptions) -> PostprocessResult {
     let parsed = parse_output(raw);
-    // 漂移检测在改写前采样，避免术语替换与润色改变语言纯度
     let drift = detect_drift(&parsed.answer, opts.expected_lang, DRIFT_THRESHOLD);
     let mut answer = parsed.answer;
     let mut terminology_applied = 0usize;
     let mut polished = false;
     if !opts.streaming {
-        // 术语表把英文术语替换为中文，仅在期望输出为中文时应用
         if opts.expected_lang == Lang::Zh {
             let (text, applied) = apply_terminology(&answer);
             answer = text;
@@ -207,7 +202,6 @@ pub fn postprocess(raw: &str, opts: &PostprocessOptions) -> PostprocessResult {
     }
 }
 
-/// 仅统计，不修改内容。
 pub fn inspect_only(text: &str, expected_lang: Lang) -> DriftResult {
     detect_drift(&strip_code(text), expected_lang, DRIFT_THRESHOLD)
 }

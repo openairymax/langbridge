@@ -1,5 +1,4 @@
 //! 浏览器能力封装：localStorage、剪贴板、下载与文件读取。
-//! 存储不可用时返回 false 或 None，由调用方提示后继续运行。
 
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
@@ -43,7 +42,6 @@ pub fn remove_item(key: &str) {
     }
 }
 
-/// 异步剪贴板不可用时的兜底：临时 textarea 配合 execCommand，执行后移除节点。
 fn copy_text_legacy(text: &str) -> bool {
     let Some(doc) = window().and_then(|win| win.document()) else {
         return false;
@@ -75,7 +73,6 @@ fn copy_text_legacy(text: &str) -> bool {
     ok
 }
 
-/// 先走异步剪贴板 API，被拒绝时回退到 execCommand。
 pub async fn copy_text(text: &str) -> bool {
     let Some(win) = window() else {
         return false;
@@ -96,7 +93,6 @@ pub fn spawn_copy(text: String, on_done: Option<std::rc::Rc<dyn Fn(bool)>>) {
     });
 }
 
-/// 跳到指定区块，用于「去 API 测量」这类跨区引导。
 pub fn scroll_to(id: &str) {
     let Some(win) = window() else { return; };
     if let Some(el) = win.document().and_then(|doc| doc.get_element_by_id(id)) {
@@ -104,7 +100,6 @@ pub fn scroll_to(id: &str) {
     }
 }
 
-/// 单列布局下结论排在输入区之后，切换示例后滚动到结论；桌面双列不动，避免抢走滚动位置。
 pub fn reveal_verdict_if_stacked() {
     let Some(win) = window() else {
         return;
@@ -123,7 +118,6 @@ pub fn reveal_verdict_if_stacked() {
     }
 }
 
-/// 用 Blob 与临时 a 标签触发下载，延迟 1 秒释放 object URL。
 pub fn download_text(filename: &str, text: &str, mime: &str) {
     let Some(win) = window() else {
         return;
@@ -165,7 +159,6 @@ pub fn download_text(filename: &str, text: &str, mime: &str) {
     .forget();
 }
 
-/// 以 UTF-8 读取文件；FileReader 报错时返回 Err。
 pub async fn read_file_text(file: &File) -> Result<String, String> {
     let promise = js_sys::Promise::new(&mut {
         let file = file.clone();

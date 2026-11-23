@@ -2,7 +2,6 @@
 
 use crate::types::{CalibrationResult, Family, Lang, ModelMeta, ModelProfile, Policy, PolicyMode, Provenance};
 
-/// 死区只用于吸收测量噪声，是否切换由净收益门槛决定。
 pub const RATIO_HIGH_DEFAULT: f64 = 1.10;
 pub const RATIO_LOW_DEFAULT: f64 = 0.9;
 
@@ -87,12 +86,10 @@ pub fn reasoning_capable(model_id: &str) -> bool {
 }
 
 fn regex_o_series(lower: &str) -> bool {
-    // 匹配 o1 至 o9 开头的模型名
     let mut chars = lower.chars();
     matches!(chars.next(), Some('o')) && matches!(chars.next(), Some(c) if ('1'..='9').contains(&c))
 }
 
-/// 原生语言推断：已登记模型使用元数据，其余按系列与比值推断。
 pub fn infer_native_lang(model_id: &str, family: Option<Family>, ratio: Option<f64>) -> Option<Lang> {
     if let Some(known) = get_model(model_id) {
         return known.native_lang;
@@ -111,7 +108,6 @@ pub fn infer_native_lang(model_id: &str, family: Option<Family>, ratio: Option<f
     }
 }
 
-/// 未登记模型使用推断得到的元数据。
 pub fn meta_for(model_id: &str, ratio: Option<f64>) -> ModelMeta {
     if let Some(known) = get_model(model_id) {
         return known;
@@ -127,7 +123,6 @@ pub fn meta_for(model_id: &str, ratio: Option<f64>) -> ModelMeta {
     }
 }
 
-/// 由模型元数据与校准结果构建 v3 画像。
 pub fn build_profile(model: ModelMeta, measurement: CalibrationResult) -> ModelProfile {
     let native = model
         .native_lang
@@ -159,7 +154,6 @@ pub fn build_profile(model: ModelMeta, measurement: CalibrationResult) -> ModelP
     }
 }
 
-/// 容量检查，越界时返回错误并拒绝整批。
 pub fn assert_within_capacity(count: u64, capacity: u64) -> Result<(), crate::types::EngineError> {
     if count > capacity {
         return Err(crate::types::EngineError::new(

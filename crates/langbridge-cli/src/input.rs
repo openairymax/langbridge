@@ -1,6 +1,4 @@
 //! 读取命令输入，来源依次为 `--text`、`--file` 与管道 stdin。
-//!
-//! `--file -` 表示从 stdin 读取；stdin 位于终端或内容为空时不视为输入。
 
 use std::io::{IsTerminal, Read};
 

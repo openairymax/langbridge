@@ -1,7 +1,4 @@
-//! LangBridge 核心引擎。纯 Rust，无平台依赖，可编译到 wasm32 与原生。
-//!
-//! 覆盖信号提取、校准、画像、净收益、路由、注入与输出后处理。
-//! 对平台的依赖仅限时间来源：wasm 由平台层写入，原生读取系统时钟。
+//! LangBridge 核心引擎：信号提取、校准、画像、净收益、路由、注入与输出后处理。
 
 pub mod calibrate;
 pub mod canonical;
@@ -36,7 +33,6 @@ pub fn now_ms() -> i64 {
 
 #[cfg(target_arch = "wasm32")]
 fn js_now_ms() -> i64 {
-    // 时钟未写入时返回 0，过期判定因此不会触发
     CLOCK.with(|c| c.get())
 }
 

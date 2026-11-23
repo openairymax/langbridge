@@ -1,6 +1,4 @@
 //! setup 子命令：用内置证据校准全部模型并写入本地画像，无需 API Key。
-//!
-//! 单个模型失败不阻断其余模型，只有全部失败时才返回错误。
 
 use std::io::IsTerminal;
 
@@ -42,7 +40,6 @@ pub fn setup_command(args: &ParsedArgs) -> Result<i32, CliError> {
         ));
     }
 
-    // 先整批校验容量，任一越界则整批拒绝，避免只写入一部分。
     let paths = write_profiles(&profiles)?;
     let written: Vec<(String, f64, String)> = profiles
         .iter()

@@ -80,7 +80,6 @@ fn EmptyState() -> impl IntoView {
     }
 }
 
-/// 格式化数字：整数不带小数，其余保留原值，与引擎输出保持一致。
 fn fmt_num(value: f64) -> String {
     if value.is_finite() && value.fract() == 0.0 {
         format!("{:.0}", value)
@@ -97,7 +96,6 @@ fn FilledResult() -> impl IntoView {
     let story = move || savings_story(&evaluation());
     let badge = move || applicability(&evaluation());
     let suffix = move || prompt_suffix(&evaluation().routing);
-    // 0 待复制，1 已复制，2 复制失败。
     let copied = RwSignal::new(0u8);
     let copied_suffix = RwSignal::new(0u8);
 
@@ -128,7 +126,6 @@ fn FilledResult() -> impl IntoView {
 
     view! {
         <>
-            // 只让结论文字参与朗读，避免整卡（含按钮）随每次输入重复播报。
             <div class="verdict" aria-live="polite">
                 <div class="verdict-head">
                     <p class="verdict-kicker">{move || verdict().kicker}</p>
@@ -157,14 +154,8 @@ fn FilledResult() -> impl IntoView {
                         }
                             .into_any()
                     }
-                    SavingsStory::Lose { .. } => {
-                        // 结论段已经写明「多花多少、不划算」，这里不再重复同一句。
-                        ().into_any()
-                    }
-                    SavingsStory::Below { .. } => {
-                        // 净省与门槛已在结论段给出，不在数字行重复。
-                        ().into_any()
-                    }
+                    SavingsStory::Lose { .. } => ().into_any(),
+                    SavingsStory::Below { .. } => ().into_any(),
                     SavingsStory::Same { .. } => {
                         view! { <p class="note-line same" data-testid="save-line">{story.text()}</p> }
                             .into_any()
@@ -190,7 +181,6 @@ fn FilledResult() -> impl IntoView {
                 <span>{move || result_net_text(evaluation().savings.as_ref())}</span>
             </p>
 
-            // 没有独立思考的模型没有可调的推理量，隐藏档位条，避免给出无效操作。
             {move || {
                 ctx.evaluation()
                     .model
@@ -247,8 +237,6 @@ fn FilledResult() -> impl IntoView {
     }
 }
 
-/// 结论区的思考量档位。切换后净收益与门槛条随评测重算。
-/// 只展示引擎算出的 net / threshold / gross / overhead，不在此处引入新公式。
 #[component]
 fn LiveGate() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();
@@ -299,7 +287,6 @@ fn LiveGate() -> impl IntoView {
             </div>
 
             {move || {
-                // 门槛条常驻，净收益为负时也保留占位，切换档位时结论区不再上下跳动。
                 ctx.evaluation()
                     .savings
                     .clone()
@@ -345,7 +332,6 @@ fn LiveGate() -> impl IntoView {
     }
 }
 
-/// 判断过程：四层路由的执行结果与信号面板。默认展开，避免结论缺少依据。
 #[component]
 fn WhyThis() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();

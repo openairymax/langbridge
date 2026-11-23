@@ -1,5 +1,4 @@
 //! 信号提取：纯本地计算，不调用模型。
-//! 质量单位统一：中文按字符数，英文按字符数除以 4.5。
 
 use std::sync::OnceLock;
 
@@ -42,12 +41,10 @@ pub fn slice_utf16(s: &str, max: usize) -> &str {
     s
 }
 
-/// UTF-16 编码单元数。
 pub fn utf16_len(s: &str) -> usize {
     s.encode_utf16().count()
 }
 
-/// 剥离围栏代码块、行内代码与链接，避免代码影响语言判断
 pub fn strip_code(text: &str) -> String {
     let a = fence_re().replace_all(text, " ");
     let b = inline_code_re().replace_all(&a, " ");
@@ -247,7 +244,6 @@ pub fn detect_task(raw: &str) -> TaskDetection {
     }
 }
 
-/// 输入 token 的粗略估算，仅供展示。
 pub fn estimate_tokens(text: &str) -> u32 {
     let cjk_chars = count(text, cjk_re());
     let latin_chars = count(text, latin_re());
@@ -278,7 +274,6 @@ pub fn extract_signals(raw: &str, history: &str) -> Signals {
     }
 }
 
-/// 语言纯度：中文质量在总质量中的占比。
 pub fn zh_purity(text: &str) -> f64 {
     let clean = strip_code(text);
     let cjk = count(&clean, cjk_re()) as f64;

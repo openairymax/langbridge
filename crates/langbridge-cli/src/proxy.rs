@@ -1,7 +1,4 @@
-//! 本机 OpenAI 兼容代理：用 TcpListener 与每连接一个线程手写 HTTP/1.1，上游经 ureq 转发。
-//!
-//! 职责包括注入语言约束、透传上游响应、对非流式输出做后处理，以及按请求计数触发周期校准。
-//! 日志只记录决策摘要，不包含请求原文与 API Key。
+//! 本机 OpenAI 兼容代理：手写 HTTP/1.1，上游经 ureq 转发并做注入与后处理。
 
 use std::collections::{HashMap, HashSet};
 use std::io::{BufReader, Read, Write};
@@ -73,7 +70,6 @@ enum ReadError {
     Bad(&'static str),
 }
 
-/// 归一化上游地址；空值/非法地址返回 None
 pub fn target_url(upstream: &str) -> Option<String> {
     let url = normalize_base(upstream);
     if url.is_empty() {
@@ -257,7 +253,6 @@ fn read_chunked(reader: &mut BufReader<TcpStream>) -> Result<Vec<u8>, ReadError>
         let size_text = line.split(';').next().unwrap_or("").trim();
         let size = usize::from_str_radix(size_text, 16).map_err(|_| ReadError::Bad("chunk"))?;
         if size == 0 {
-            // trailers
             loop {
                 let trailer = read_line(reader).ok_or(ReadError::Bad("chunk"))?;
                 if trailer.is_empty() {
@@ -812,7 +807,6 @@ fn handle_chat(shared: &Arc<Shared>, stream: &mut TcpStream, req: &Request, cors
                     }
                     raw_stream.extend_from_slice(&buf[..n]);
                     if write_chunk(stream, &buf[..n]).is_err() {
-                        // 客户端断开后停止读取上游，避免无效等待。
                         client_gone = true;
                         break;
                     }

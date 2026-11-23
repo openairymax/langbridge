@@ -1,6 +1,4 @@
-//! API 探测校准：对每个模型发起 6 次请求（中英各 3 档样本），读取 usage 中的 prompt_tokens。
-//!
-//! 只接受同步响应；重试次数、退避与载荷降级都在此处收敛。
+//! API 探测校准：对每个模型发 6 次请求，读取 usage 中的 prompt_tokens。
 
 use std::time::Duration;
 

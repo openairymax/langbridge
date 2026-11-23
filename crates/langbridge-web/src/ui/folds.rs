@@ -1,5 +1,4 @@
 //! 折叠区：参考数据与测量、数据来源与进阶、接入与高级。
-//! 三段默认收起，展开后按结论、依据、原始数据的顺序排列。
 
 use leptos::prelude::*;
 use wasm_bindgen::JsCast;
@@ -33,10 +32,6 @@ pub fn Folds() -> impl IntoView {
         </div>
     }
 }
-
-/* ------------------------------------------------------------------ */
-/* 参考数据与测量                                                      */
-/* ------------------------------------------------------------------ */
 
 #[component]
 fn CalibrationFold() -> impl IntoView {
@@ -306,10 +301,6 @@ fn CalibrationFold() -> impl IntoView {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 数据来源与进阶                                                      */
-/* ------------------------------------------------------------------ */
-
 #[component]
 fn EvidenceFold() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();
@@ -340,7 +331,6 @@ fn EvidenceFold() -> impl IntoView {
         let Some(file) = input.files().and_then(|files| files.get(0)) else {
             return;
         };
-        // 清空选择框，同一个文件可以再次导入。
         input.set_value("");
         let ctx = ctx;
         wasm_bindgen_futures::spawn_local(async move {
@@ -354,7 +344,6 @@ fn EvidenceFold() -> impl IntoView {
         });
     };
 
-    // 删除需要二次确认，确认态只对当前模型有效，切换模型后失效。
     let confirm_delete = RwSignal::new(None::<String>);
     let reset = move |_| {
         let state = ctx.state.get_untracked();
@@ -534,17 +523,12 @@ fn EvidenceFold() -> impl IntoView {
     }
 }
 
-/* ------------------------------------------------------------------ */
-/* 接入与高级                                                          */
-/* ------------------------------------------------------------------ */
-
 #[component]
 fn AdvancedFold() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();
     let evaluation = move || ctx.evaluation();
     let streaming = move || ctx.state.get().streaming;
     let injection = move || evaluation().injection;
-    // 0 待复制，1 已复制，2 复制失败。
     let copy_state = RwSignal::new(0u8);
 
     let copy_prompt = move |_| {
@@ -559,7 +543,6 @@ fn AdvancedFold() -> impl IntoView {
         crate::io::spawn_copy(plan.system_prompt.clone(), hook);
     };
 
-    // 提示内容变化后复制状态回到 0，避免旧的成功字样留在新提示上。
     Effect::new(move |_| {
         injection();
         copy_state.set(0);

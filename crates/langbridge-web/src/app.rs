@@ -1,5 +1,4 @@
-//! 页面编排：首屏、工作台（输入与结论）、三步说明、API 探测、折叠区、页脚。
-//! 只管布局与装配；文案在 `copy`，状态在 `state`，计算在 `langbridge_core`。
+//! 页面编排：首屏、工作台、三步说明、API 探测、折叠区与页脚。
 
 use leptos::prelude::*;
 
@@ -31,7 +30,6 @@ pub fn App() -> impl IntoView {
     }
 }
 
-/// 首屏：品牌名、定位句、成本问句与来源。存储不可用时在顶部显示一条告警。
 #[component]
 fn Hero() -> impl IntoView {
     let ctx = expect_context::<AppCtx>();
@@ -61,7 +59,6 @@ fn Hero() -> impl IntoView {
     }
 }
 
-/// 三步说明。措辞来自 `copy`，档位数值取自样本数据。
 #[component]
 fn StepsStrip() -> impl IntoView {
     let rows = steps();

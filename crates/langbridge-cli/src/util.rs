@@ -1,6 +1,4 @@
 //! 通用工具：请求 ID、ISO 时间与错误码映射。
-//!
-//! 请求 ID 由时间、进程号与计数器拼合，不引入额外依赖。
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
@@ -9,7 +7,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-/// 生成 RFC 4122 形状的请求 ID；各字段由时间、进程号与计数器拼合。
 pub fn new_request_id() -> String {
     let n = COUNTER.fetch_add(1, Ordering::Relaxed);
     let nanos = SystemTime::now()
