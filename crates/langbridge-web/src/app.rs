@@ -40,7 +40,18 @@ fn Hero() -> impl IntoView {
                 warning().map(|message| {
                     view! {
                         <div class="top-meta">
-                            <span class="chip chip-warn">{message}</span>
+                            <span class="chip chip-warn" role="status">
+                                {message}
+                                <button
+                                    type="button"
+                                    class="chip-dismiss"
+                                    aria-label=crate::copy::UI.clear_notice
+                                    title=crate::copy::UI.clear_notice
+                                    on:click=move |_| ctx.set_storage_warning(None)
+                                >
+                                    "×"
+                                </button>
+                            </span>
                         </div>
                     }
                 })

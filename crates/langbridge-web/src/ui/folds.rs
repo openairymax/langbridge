@@ -10,8 +10,8 @@ use langbridge_core::profiles::get_model;
 use langbridge_core::types::InjectionState;
 
 use crate::copy::{
-    evidence_version_badge, fmt2, fmt3, lang_text, limitations, r_auto_label, ADVANCED, CAL,
-    EVIDENCE, FLOW, PROFILE, R_CUSTOM_ARIA, R_ROW_LABEL, SAVING_METRICS, SECTION,
+    evidence_version_badge, fmt2, fmt3, lang_text, limitations, r_auto_label, r_preset_aria,
+    ADVANCED, CAL, EVIDENCE, FLOW, PROFILE, R_ROW_LABEL, SAVING_METRICS, SECTION,
 };
 use crate::data::builtin_rows;
 use crate::state::{select_canonical, select_record, AppCtx, CalibrationStatus, ProfileHealth};
@@ -154,6 +154,9 @@ fn CalibrationFold() -> impl IntoView {
                                         ProfileHealth::LowQuality => {
                                             Some(view! { <p class="notice notice-warn">{format!("{}{}", CAL.warn_prefix, CAL.metrics.linear_bad())}</p> })
                                         }
+                                        ProfileHealth::Stale => {
+                                            Some(view! { <p class="notice notice-muted">{PROFILE.expired_notice_measured.to_string()}</p> })
+                                        }
                                         _ => None,
                                     }}
                                 </>
@@ -256,7 +259,10 @@ fn CalibrationFold() -> impl IntoView {
                                                 ctx.state.get().r_override == Some(value),
                                             )
                                         }
-                                        aria-label=R_CUSTOM_ARIA
+                                        aria-label=r_preset_aria(value)
+                                        aria-pressed=move || {
+                                            ctx.state.get().r_override == Some(value)
+                                        }
                                         on:click=move |_| ctx.set_r_override(Some(value))
                                     >
                                         {label}
@@ -320,6 +326,8 @@ fn EvidenceFold() -> impl IntoView {
         }
     };
 
+    let import_note = RwSignal::new(false);
+
     let import = move |ev: leptos::ev::Event| {
         let Some(input) = ev
             .target()
@@ -335,7 +343,12 @@ fn EvidenceFold() -> impl IntoView {
         wasm_bindgen_futures::spawn_local(async move {
             match crate::io::read_file_text(&file).await {
                 Ok(text) => {
-                    ctx.import_profile(&text);
+                    let ok = ctx.import_profile(&text);
+                    import_note.set(ok);
+                    if ok {
+                        gloo_timers::callback::Timeout::new(4_000, move || import_note.set(false))
+                            .forget();
+                    }
                     crate::io::reveal_verdict_if_stacked();
                 }
                 Err(_) => ctx.set_storage_warning(Some(PROFILE.read_fail.to_string())),
@@ -344,6 +357,12 @@ fn EvidenceFold() -> impl IntoView {
     };
 
     let confirm_delete = RwSignal::new(None::<String>);
+    Effect::new(move |_| {
+        let id = ctx.state.get().model_id;
+        if confirm_delete.get_untracked().as_deref() != Some(id.as_str()) {
+            confirm_delete.set(None);
+        }
+    });
     let reset = move |_| {
         let state = ctx.state.get_untracked();
         if state.profile.is_none() {
@@ -405,7 +424,10 @@ fn EvidenceFold() -> impl IntoView {
                                             <button
                                                 type="button"
                                                 class="covered-btn"
-                                                on:click=move |_| ctx.load_model_demo(id_for_click.clone())
+                                                on:click=move |_| {
+                                                    ctx.load_model_demo(id_for_click.clone());
+                                                    crate::io::reveal_verdict_if_stacked();
+                                                }
                                             >
                                                 <span>{name}</span>
                                                 {move || {
@@ -478,11 +500,33 @@ fn EvidenceFold() -> impl IntoView {
                 {move || {
                     ctx.state
                         .get()
+                        .migrated
+                        .then(|| {
+                            view! {
+                                <p class="profile-flags">
+                                    <span class="chip">{PROFILE.migrate_chip}</span>
+                                </p>
+                            }
+                        })
+                }}
+                {move || {
+                    import_note
+                        .get()
+                        .then(|| {
+                            view! {
+                                <p class="notice notice-ok" role="status">{PROFILE.import_ok}</p>
+                            }
+                        })
+                }}
+
+                {move || {
+                    ctx.state
+                        .get()
                         .import_errors
                         .as_ref()
                         .map(|errors| {
                             view! {
-                                <ul class="import-errors">
+                                <ul class="import-errors" role="alert">
                                     {errors
                                         .iter()
                                         .map(|error| {

@@ -3,10 +3,10 @@
 use leptos::prelude::*;
 
 use crate::copy::{
-    applicability, builtin_row_text, chain_foot, layer, prompt_suffix, result_net_text,
-    result_ratio_text, result_summary_text, save_line_parts, savings_story, signal_rows,
-    verdict_copy, why_mark, SavingsStory, CHAIN, EMPTY, FLOW, GATE_NET, GATE_THRESHOLD, RESULT,
-    R_LIVE_NOTE, R_PRESETS, R_ROW_LABEL, SUFFIX, UI,
+    applicability, builtin_row_text, chain_foot, layer, prompt_suffix, r_preset_aria,
+    result_net_text_for, result_ratio_text, result_summary_text, save_line_parts, savings_story,
+    signal_rows, verdict_copy, why_mark, SavingsStory, CHAIN, EMPTY, FLOW, GATE_NET,
+    GATE_THRESHOLD, RESULT, R_LIVE_NOTE, R_PRESETS, R_ROW_LABEL, SUFFIX, UI,
 };
 use crate::data::builtin_rows;
 use crate::state::AppCtx;
@@ -109,9 +109,7 @@ fn FilledResult() -> impl IntoView {
                 text,
                 Some(std::rc::Rc::new(move |ok: bool| {
                     copied.set(if ok { 1 } else { 2 });
-                    if ok {
-                        set_timeout(move || copied.set(0), 1600);
-                    }
+                    set_timeout(move || copied.set(0), if ok { 1600 } else { 2600 });
                 })),
             );
         }
@@ -178,7 +176,7 @@ fn FilledResult() -> impl IntoView {
             <p class="result-meta" data-testid="result-meta">
                 <span>{move || result_ratio_text(evaluation().effective_ratio)}</span>
                 <span class="result-meta-sep" aria-hidden="true">"/"</span>
-                <span>{move || result_net_text(evaluation().savings.as_ref())}</span>
+                <span>{move || result_net_text_for(&ctx.evaluation())}</span>
             </p>
 
             {move || {
@@ -201,36 +199,50 @@ fn FilledResult() -> impl IntoView {
                 </button>
             </div>
 
-            <div class="suffix-box" data-testid="prompt-suffix">
-                <div class="suffix-head">
-                    <span class="suffix-label">{SUFFIX.label}</span>
-                    <button
-                        type="button"
-                        class="btn btn-ghost btn-sm copy-btn"
-                        on:click=move |_| {
-                            let text = suffix();
-                            let copied_suffix = copied_suffix;
-                            crate::io::spawn_copy(
-                                text,
-                                Some(std::rc::Rc::new(move |ok: bool| {
-                                    copied_suffix.set(if ok { 1 } else { 2 });
-                                    if ok {
-                                        set_timeout(move || copied_suffix.set(0), 1600);
-                                    }
-                                })),
-                            );
+            {move || {
+                let injectable = ctx
+                    .evaluation()
+                    .injection
+                    .as_ref()
+                    .map(|plan| !plan.system_prompt.trim().is_empty())
+                    .unwrap_or(false);
+                injectable
+                    .then(|| {
+                        view! {
+                            <div class="suffix-box" data-testid="prompt-suffix">
+                                <div class="suffix-head">
+                                    <span class="suffix-label">{SUFFIX.label}</span>
+                                    <button
+                                        type="button"
+                                        class="btn btn-ghost btn-sm copy-btn"
+                                        on:click=move |_| {
+                                            let text = suffix();
+                                            let copied_suffix = copied_suffix;
+                                            crate::io::spawn_copy(
+                                                text,
+                                                Some(std::rc::Rc::new(move |ok: bool| {
+                                                    copied_suffix.set(if ok { 1 } else { 2 });
+                                                    set_timeout(
+                                                        move || copied_suffix.set(0),
+                                                        if ok { 1600 } else { 2600 },
+                                                    );
+                                                })),
+                                            );
+                                        }
+                                    >
+                                        {move || match copied_suffix.get() {
+                                            1 => UI.copied,
+                                            2 => UI.copy_failed,
+                                            _ => SUFFIX.copy,
+                                        }}
+                                    </button>
+                                </div>
+                                <code class="suffix-text">{move || suffix()}</code>
+                                <p class="muted small">{SUFFIX.hint}</p>
+                            </div>
                         }
-                    >
-                        {move || match copied_suffix.get() {
-                            1 => UI.copied,
-                            2 => UI.copy_failed,
-                            _ => SUFFIX.copy,
-                        }}
-                    </button>
-                </div>
-                <code class="suffix-text">{move || suffix()}</code>
-                <p class="muted small">{SUFFIX.hint}</p>
-            </div>
+                    })
+            }}
 
             <WhyThis />
         </>
@@ -275,6 +287,7 @@ fn LiveGate() -> impl IntoView {
                                 <button
                                     type="button"
                                     class=move || chip_class(Some(value))
+                                    aria-label=r_preset_aria(value)
                                     aria-pressed=move || (manual() == Some(value)).to_string()
                                     on:click=move |_| ctx.set_r_override(Some(value))
                                 >

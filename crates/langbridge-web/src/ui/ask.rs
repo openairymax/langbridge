@@ -60,7 +60,10 @@ pub fn AskCard() -> impl IntoView {
     Effect::new(move |_| {
         let (id, _) = model_key.get();
         let listed = is_known(&id) || measured().iter().any(|item| item.id == id);
-        if !listed {
+        if listed {
+            custom_mode.set(false);
+            custom_text.set(String::new());
+        } else {
             custom_mode.set(true);
             custom_text.set(id);
         }
@@ -287,7 +290,7 @@ pub fn AskCard() -> impl IntoView {
                         }
                     })
                     .collect_view()}
-                <span class="char-count" data-testid="char-count" aria-live="polite">
+                <span class="char-count" data-testid="char-count">
                     {move || UI.char_count(ctx.state.get().text.chars().count())}
                 </span>
                 {move || {

@@ -212,12 +212,13 @@ pub fn ApiProbe() -> impl IntoView {
                             <option value=PROBE.provider_custom>{PROBE.provider_custom}</option>
                         </select>
                     </label>
-                    <label class="probe-key">
+                    <div class="probe-key">
                         <span class="probe-label">
                             {PROBE.api_key}
                             <button
                                 type="button"
                                 class="key-toggle"
+                                aria-label=PROBE.key_toggle_aria
                                 aria-pressed=move || if show_key.get() { "true" } else { "false" }
                                 on:click=move |_| show_key.update(|v| *v = !*v)
                             >
@@ -229,13 +230,14 @@ pub fn ApiProbe() -> impl IntoView {
                             autocomplete="off"
                             spellcheck="false"
                             placeholder="sk-…"
+                            aria-label=PROBE.api_key
                             prop:value=move || api_key.get()
                             on:input=move |ev| {
                                 api_key.set(event_target_value(&ev));
                                 invalidate_check();
                             }
                         />
-                    </label>
+                    </div>
                 </div>
 
                 <div class="probe-actions">
@@ -245,7 +247,7 @@ pub fn ApiProbe() -> impl IntoView {
                         disabled=move || running() || checking.get()
                         on:click=test
                     >
-                        {move || if checking.get() { PROBE.preparing } else { "测试连接" }}
+                        {move || if checking.get() { PROBE.testing } else { PROBE.test_connect }}
                     </button>
                     <button
                         type="button"
@@ -258,7 +260,7 @@ pub fn ApiProbe() -> impl IntoView {
                             } else if measured_now() {
                                 PROBE.retry_run
                             } else {
-                                "开始测量"
+                                PROBE.start_measure
                             }
                         }}
                     </button>
@@ -267,7 +269,7 @@ pub fn ApiProbe() -> impl IntoView {
                 <p class="probe-hint" data-testid="probe-next">
                     {move || {
                         if running() {
-                            "正在测量，进度见下方。过程中可以随时取消。"
+                            PROBE.running_note
                         } else if measured_now() {
                             FLOW.probe_next_done
                         } else if check.get().map(|result| result.ok).unwrap_or(false) {
@@ -337,7 +339,7 @@ pub fn ApiProbe() -> impl IntoView {
                         .get()
                         .map(|result| {
                             let class = if result.ok { "probe-status ok" } else { "probe-status bad" };
-                            let title = if result.ok { "连接正常" } else { "连接失败" };
+                            let title = if result.ok { PROBE.connected } else { PROBE.connect_failed };
                             let meta = if result.ok {
                                 format!("{:.0} ms", result.latency_ms)
                             } else {
@@ -507,7 +509,7 @@ fn CompareRow() -> impl IntoView {
     view! {
         <div class="probe-compare" data-testid="probe-compare">
             <div class="probe-compare-head">
-                <span class="probe-compare-title">"和内置参考比一比"</span>
+                <span class="probe-compare-title">{PROBE.compare_title}</span>
             </div>
             <div class="probe-compare-row">
                 <span class="probe-compare-label">{PROBE.compare_builtin}</span>
@@ -523,7 +525,7 @@ fn CompareRow() -> impl IntoView {
                     {move || {
                         measured()
                             .map(|value| format!("{}×", fmt2(value)))
-                            .unwrap_or_else(|| "未测".to_string())
+                            .unwrap_or_else(|| PROBE.not_measured.to_string())
                     }}
                 </span>
             </div>

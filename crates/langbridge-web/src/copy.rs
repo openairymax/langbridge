@@ -1,6 +1,6 @@
 //! 界面文案：组件的可见文本集中于此。
 
-use langbridge_core::calibrate::{LINEAR_MAX_DEVIATION, RECALIBRATE_EVERY};
+use langbridge_core::calibrate::LINEAR_MAX_DEVIATION;
 use langbridge_core::evidence::{evidence_meta, has_evidence, list_evidence_models, ProbeStep};
 use langbridge_core::guard::DRIFT_THRESHOLD;
 use langbridge_core::profile_store::PROFILE_MAX_AGE_DAYS;
@@ -1189,24 +1189,45 @@ pub fn result_net_text(savings: Option<&SavingsResult>) -> String {
     format!("{} {} Token", RESULT.net_loss, js_num(s.net.abs()))
 }
 
+fn follows_input(evaluation: &Evaluation) -> bool {
+    evaluation.savings.is_none()
+        && evaluation.routing.decided_by == DecidedBy::L3
+        && evaluation.routing.cost_status == CostStatus::Ok
+}
+
+pub fn result_net_text_for(evaluation: &Evaluation) -> String {
+    if follows_input(evaluation) {
+        RESULT.net_same.to_string()
+    } else {
+        result_net_text(evaluation.savings.as_ref())
+    }
+}
+
 pub fn result_summary_text(evaluation: &Evaluation, generated_at: &str) -> String {
     let verdict = verdict_copy(evaluation);
     let story = savings_story(evaluation);
-    [
+    let mut lines = vec![
         format!("{}｜{}", RESULT.brand, evaluation.model.display_name),
         format!("{}：{}", verdict.kicker, verdict.headline),
         verdict.detail,
         format!("节省判断：{}", story.text()),
         result_ratio_text(evaluation.effective_ratio),
-        result_net_text(evaluation.savings.as_ref()),
-        format!(
+        result_net_text_for(evaluation),
+    ];
+    let injectable = evaluation
+        .injection
+        .as_ref()
+        .map(|plan| !plan.system_prompt.trim().is_empty())
+        .unwrap_or(false);
+    if injectable {
+        lines.push(format!(
             "{}：{}",
             RESULT.suffix_label,
             prompt_suffix(&evaluation.routing)
-        ),
-        format!("{}：{}", RESULT.time_label, generated_at),
-    ]
-    .join("\n")
+        ));
+    }
+    lines.push(format!("{}：{}", RESULT.time_label, generated_at));
+    lines.join("\n")
 }
 
 pub const SAVING_TITLE: &str = "费用明细";
@@ -1228,8 +1249,11 @@ pub const SAVING_METRICS: SavingMetrics = SavingMetrics {
 };
 
 pub const R_ROW_LABEL: &str = "一次回答大概思考多少 Token";
-pub const R_CUSTOM_ARIA: &str = "自定义预期思考量";
 pub const R_LIVE_NOTE: &str = "换一档思考量，结论与门槛会立刻重算";
+
+pub fn r_preset_aria(value: f64) -> String {
+    format!("预期思考量 {}", js_num(value))
+}
 pub const GATE_NET: &str = "净收益";
 pub const GATE_THRESHOLD: &str = "门槛";
 
@@ -1285,6 +1309,12 @@ pub fn applicability(evaluation: &Evaluation) -> Applicability {
         };
     }
     let Some(s) = savings else {
+        if follows_input(evaluation) {
+            return Applicability {
+                label: "无需切换",
+                tone: Tone::Muted,
+            };
+        }
         if status.health == ProfileHealth::Stale {
             return Applicability {
                 label: if builtin {
@@ -1674,7 +1704,7 @@ pub const CAL: CalCopy = CalCopy {
     rerun_stable: "结果稳定",
     rerun_unstable: "结果不稳定，建议重试",
     repro_summary: "复现命令与原始计数",
-    method_note: "源设计 §5.1 为双样本均值（lang_ratio = zh 均值 ÷ en 均值）；当前实现按三档长度做最小二乘拟合斜率比，等价于抵消固定开销后的多样本口径。",
+    method_note: "比值由中英三档长度的计数斜率拟合得出，固定开销相互抵消，可跨模型比较。",
     error_title: "测量失败",
     last_run_failed: "本次测量没有完成，下面仍是上一次的记录：",
     api_retry_hint: "请在页面上方的「API 真实探测」卡片里修改参数后重试。",
@@ -1750,26 +1780,10 @@ pub struct ProfileCopy {
     pub empty_notice: &'static str,
     pub import_fail_title: &'static str,
     pub import_fail_msg: &'static str,
+    pub import_ok: &'static str,
     pub read_fail: &'static str,
-    pub expired_builtin: String,
-    pub expired_measured: String,
-    pub measured_at_note: &'static str,
     pub delete_confirm: &'static str,
-    pub native_lang_label: &'static str,
-    pub recalib_note: String,
-    pub stale_builtin_notice: &'static str,
-    pub expired_notice_builtin: &'static str,
     pub expired_notice_measured: &'static str,
-}
-
-impl ProfileCopy {
-    pub fn gen_at(&self, d: i64) -> String {
-        format!("参考数据生成于 {} 天前（公开 tokenizer 计数）", d)
-    }
-
-    pub fn measured_at(&self, d: i64) -> String {
-        format!("测量于 {} 天前", d)
-    }
 }
 
 pub static PROFILE: std::sync::LazyLock<ProfileCopy> = std::sync::LazyLock::new(|| ProfileCopy {
@@ -1779,19 +1793,9 @@ pub static PROFILE: std::sync::LazyLock<ProfileCopy> = std::sync::LazyLock::new(
         "还没有记录。点上方「载入参考数据」或「测一下」后会生成可复现的 profile.json，刷新仍保留。",
     import_fail_title: "导入失败",
     import_fail_msg: "文件未通过画像校验，未写入本地存储。",
+    import_ok: "画像已导入，结论与费用已更新。",
     read_fail: "读取文件失败",
-    expired_builtin: format!("参考数据已超过 {} 天，费用估算已停用", PROFILE_MAX_AGE_DAYS),
-    expired_measured: format!("测量已超过 {} 天，费用结论已停用", PROFILE_MAX_AGE_DAYS),
-    measured_at_note: "源设计字段名为 calibrated_at，v3 画像中为 measured_at",
     delete_confirm: "确认删除这条记录？",
-    native_lang_label: "native_lang:",
-    recalib_note: format!(
-        "代理网关每 {} 次指令自动重校准（源设计 §5.2，Web 端不计数）",
-        RECALIBRATE_EVERY
-    ),
-    stale_builtin_notice:
-        "这是公开 tokenizer 的真实计数，不是服务端账单；需要精确计费口径时请用 API 测量。",
-    expired_notice_builtin: "参考数据太久远了：重新载入之前，不会给出费用估算。",
     expired_notice_measured: "测量太久远了：重新测一次之前，不会给出费用结论。",
 });
 
@@ -1904,20 +1908,25 @@ pub struct ProbeCopy {
     pub need_base_url: &'static str,
     pub need_model_id: &'static str,
     pub need_api_key: &'static str,
-    pub mismatch: &'static str,
-    pub status_cancelled: &'static str,
     pub ok_title: &'static str,
     pub compare_builtin: &'static str,
     pub compare_measured: &'static str,
     pub compare_no_baseline: &'static str,
-    pub compare_delta_no_baseline: &'static str,
     pub compare_updated: &'static str,
+    pub compare_title: &'static str,
     pub presets: [Preset; 7],
     pub preparing: &'static str,
     pub finishing: &'static str,
+    pub test_connect: &'static str,
+    pub testing: &'static str,
+    pub key_toggle_aria: &'static str,
+    pub start_measure: &'static str,
+    pub running_note: &'static str,
+    pub connected: &'static str,
+    pub connect_failed: &'static str,
+    pub not_measured: &'static str,
     pub log_title: &'static str,
     pub cancel: &'static str,
-    pub cancelling: &'static str,
     pub retry_run: &'static str,
 }
 
@@ -1941,14 +1950,12 @@ pub const PROBE: ProbeCopy = ProbeCopy {
     need_base_url: "请先填写 Base URL",
     need_model_id: "请填写模型 ID",
     need_api_key: "请先填写 API Key（本地服务可留空）",
-    mismatch: "地址与模型不像来自同一个服务商，请确认是否配套。",
-    status_cancelled: "已取消",
     ok_title: "测量完成",
     compare_builtin: "内置",
     compare_measured: "实测",
     compare_no_baseline: "无参考",
-    compare_delta_no_baseline: "无参考",
     compare_updated: "整页结论与费用已改用实测值。",
+    compare_title: "和内置参考比一比",
     presets: [
         Preset {
             name: "OpenAI",
@@ -1988,9 +1995,16 @@ pub const PROBE: ProbeCopy = ProbeCopy {
     ],
     preparing: "准备中",
     finishing: "核对结果",
+    test_connect: "测试连接",
+    testing: "测试中",
+    key_toggle_aria: "显示或隐藏 API Key",
+    start_measure: "开始测量",
+    running_note: "正在测量，进度见下方。过程中可以随时取消。",
+    connected: "连接正常",
+    connect_failed: "连接失败",
+    not_measured: "未测",
     log_title: "本次记录",
     cancel: "取消测量",
-    cancelling: "正在取消…",
     retry_run: "再测一次",
 };
 

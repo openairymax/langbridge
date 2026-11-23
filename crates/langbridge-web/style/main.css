@@ -3888,3 +3888,37 @@ textarea::-webkit-scrollbar-thumb:hover,
     width: 100%;
   }
 }
+
+/* 状态提示 */
+
+.top-meta .chip-warn {
+  white-space: normal;
+  max-width: 100%;
+  text-align: left;
+}
+
+.chip-dismiss {
+  flex: none;
+  margin-left: 2px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+.chip-dismiss:hover,
+.chip-dismiss:focus-visible {
+  opacity: 1;
+}
+
+.profile-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0 0;
+}
+

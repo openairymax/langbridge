@@ -311,14 +311,6 @@ impl CalibrationState {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TabId {
-    Decision,
-    Calibrate,
-    Evidence,
-    Advanced,
-}
-
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct MeasuredEntry {
     pub id: String,
@@ -338,7 +330,6 @@ pub struct AppState {
     pub signals: Option<Signals>,
     pub profile: Option<ModelProfile>,
     pub calibration: CalibrationState,
-    pub tab: TabId,
     pub show_raw: bool,
     pub import_errors: Option<Vec<FieldError>>,
     pub storage_warning: Option<String>,
@@ -358,7 +349,6 @@ impl Default for AppState {
             signals: None,
             profile: None,
             calibration: CalibrationState::default(),
-            tab: TabId::Decision,
             show_raw: false,
             import_errors: None,
             storage_warning: None,
@@ -582,10 +572,6 @@ impl AppCtx {
         self.state.update(|s| s.user_system_prompt = value);
     }
 
-    pub fn set_tab(&self, tab: TabId) {
-        self.state.update(|s| s.tab = tab);
-    }
-
     pub fn toggle_raw(&self) {
         self.state.update(|s| s.show_raw = !s.show_raw);
     }
@@ -798,7 +784,7 @@ impl AppCtx {
         self.state.update(|s| {
             if s.calibration.status == CalibrationStatus::Running {
                 s.calibration.status = CalibrationStatus::Idle;
-                s.calibration.step = None;
+                s.calibration.progress = 0.0;
             }
         });
     }
@@ -822,13 +808,13 @@ impl AppCtx {
         .await
     }
 
-    pub fn import_profile(&self, text: &str) {
+    pub fn import_profile(&self, text: &str) -> bool {
         bump_generation();
         abort_probe();
         let parsed = parse_profile_file(text, langbridge_core::now_ms());
         if !parsed.ok || parsed.profile.is_none() {
             self.state.update(|s| s.import_errors = Some(parsed.errors));
-            return;
+            return false;
         }
         let profile = parsed.profile.expect("checked");
         let saved = save_profile(&profile);
@@ -849,9 +835,9 @@ impl AppCtx {
             } else {
                 Some(STORAGE.profile_imported_not_saved.to_string())
             };
-            s.tab = TabId::Decision;
             s.measured = load_measured();
         });
+        true
     }
 
     pub fn reset_profile(&self) {
@@ -897,24 +883,22 @@ fn apply_success(state: RwSignal<AppState>, profile: ModelProfile, rerun: Option
         return;
     }
     let saved = save_profile(&profile);
+    let step = state.get_untracked().calibration.step;
     state.update(|s| {
         s.profile = Some(profile);
         s.model_id = model_id;
         s.r_override = None;
+        s.migrated = false;
         s.storage_warning = if saved {
             None
         } else {
             Some(STORAGE.profile_not_saved.to_string())
         };
-        s.tab = if rerun.is_some() {
-            TabId::Calibrate
-        } else {
-            TabId::Decision
-        };
         s.calibration = CalibrationState {
             status: CalibrationStatus::Success,
             progress: 1.0,
             rerun,
+            step,
             log: s.calibration.log.clone(),
             ..CalibrationState::default()
         };
@@ -1065,9 +1049,6 @@ pub fn install_app_state() -> AppCtx {
         let warn_timer = Rc::clone(&warn_timer);
         move |_| {
             let snapshot = state.get();
-            let _ = snapshot.tab;
-            let _ = snapshot.show_raw;
-            let _ = snapshot.user_system_prompt;
             let over_limit = snapshot.text.chars().count() > MAX_PERSISTED_TEXT;
             set_timeout(
                 {
