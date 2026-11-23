@@ -1,0 +1,42 @@
+name: Sync from AtomGit
+
+on:
+  schedule:
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    name: Mirror AtomGit main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Prepare SSH key
+        env:
+          ATOMGIT_SSH_KEY: ${{ secrets.ATOMGIT_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$ATOMGIT_SSH_KEY" > ~/.ssh/atomgit
+          chmod 600 ~/.ssh/atomgit
+          ssh-keyscan -t rsa,ecdsa,ed25519 atomgit.com >> ~/.ssh/known_hosts 2>/dev/null
+          printf 'Host atomgit.com\n  HostName atomgit.com\n  User git\n  IdentityFile ~/.ssh/atomgit\n  IdentitiesOnly yes\n' > ~/.ssh/config
+
+      - name: Fetch from AtomGit
+        run: |
+          git remote add atomgit git@atomgit.com:openairymax/langbridge.git
+          git fetch --tags --force atomgit main
+
+      - name: Push to GitHub
+        run: |
+          git push origin atomgit/main:refs/heads/main
+          git push origin --tags
