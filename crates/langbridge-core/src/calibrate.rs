@@ -1,4 +1,4 @@
-//! Tokenizer 特征校准：对同一语料的 N / 2N / 4N 三档计数做最小二乘拟合，固定开销由差分抵消。
+//! Tokenizer 校准：对同一语料的 N、2N、4N 三档计数做最小二乘拟合。
 
 use crate::signals::round2;
 use crate::types::{
@@ -175,7 +175,7 @@ pub fn compare_rerun(prev: &CalibrationResult, next: &CalibrationResult) -> (f64
 }
 
 pub fn should_recalibrate(tick_count: u64) -> bool {
-    tick_count > 0 && tick_count % RECALIBRATE_EVERY == 0
+    tick_count > 0 && tick_count.is_multiple_of(RECALIBRATE_EVERY)
 }
 
 pub fn calibration_usable(cal: &CalibrationResult) -> bool {

@@ -136,11 +136,17 @@ pub fn js_num(n: f64) -> String {
 
 pub fn print_calibration(cal: &CalibrationResult) {
     println!("{}", line("方法", source_code(cal.method)));
-    println!("{}", line("density_ratio", &format!("{:.4}", cal.density_ratio)));
+    println!(
+        "{}",
+        line("density_ratio", &format!("{:.4}", cal.density_ratio))
+    );
     if let Some(g) = cal.generation_ratio {
         println!("{}", line("generation_ratio", &format!("{:.4}", g)));
     }
-    println!("{}", line("effective_ratio", &format!("{:.4}", cal.effective_ratio)));
+    println!(
+        "{}",
+        line("effective_ratio", &format!("{:.4}", cal.effective_ratio))
+    );
     println!(
         "{}",
         line(
@@ -311,7 +317,10 @@ pub fn print_profile(profile: &ModelProfile) {
         "{}",
         line(
             "模型",
-            &format!("{}（{}）", profile.model.model_id, profile.model.display_name)
+            &format!(
+                "{}（{}）",
+                profile.model.model_id, profile.model.display_name
+            )
         )
     );
     println!(
@@ -333,12 +342,6 @@ pub fn print_profile(profile: &ModelProfile) {
         )
     );
     print_calibration(&profile.measurement);
-    println!(
-        "{}",
-        line(
-            "来源",
-            source_code(profile.provenance.source)
-        )
-    );
+    println!("{}", line("来源", source_code(profile.provenance.source)));
     println!("{}", line("测量时间", &profile.measurement.measured_at));
 }

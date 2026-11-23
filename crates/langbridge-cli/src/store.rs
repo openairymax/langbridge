@@ -1,4 +1,4 @@
-//! 本地画像存储，默认位于 ~/.langbridge，写入先落 .tmp 再 rename。
+//! 本地画像存储，写入先落 .tmp 再 rename。
 
 use std::collections::HashSet;
 use std::env;
@@ -155,8 +155,9 @@ pub fn write_profiles(profiles: &[ModelProfile]) -> Result<Vec<PathBuf>, CliErro
         let tmp = PathBuf::from(format!("{}.tmp", paths[i].display()));
         fs::write(&tmp, serialize_profile(profile))
             .map_err(|e| CliError::new(2, format!("写入画像失败：{}（{}）", tmp.display(), e)))?;
-        fs::rename(&tmp, &paths[i])
-            .map_err(|e| CliError::new(2, format!("写入画像失败：{}（{}）", paths[i].display(), e)))?;
+        fs::rename(&tmp, &paths[i]).map_err(|e| {
+            CliError::new(2, format!("写入画像失败：{}（{}）", paths[i].display(), e))
+        })?;
     }
     Ok(paths)
 }

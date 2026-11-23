@@ -1,4 +1,4 @@
-//! LangBridge Web 前端，Leptos CSR 渲染。
+//! Web 前端，Leptos CSR 渲染。
 
 pub mod app;
 pub mod copy;

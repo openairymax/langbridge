@@ -1,4 +1,4 @@
-//! Web 状态层：唯一的应用状态、派生评测与动作入口。
+//! 应用状态、派生评测与动作入口。
 
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
@@ -127,7 +127,10 @@ pub fn profile_status(profile: Option<&ModelProfile>, now: i64) -> ProfileStatus
 pub fn select_model(state: &AppState) -> ModelMeta {
     meta_for(
         &state.model_id,
-        state.profile.as_ref().map(|p| p.measurement.effective_ratio),
+        state
+            .profile
+            .as_ref()
+            .map(|p| p.measurement.effective_ratio),
     )
 }
 
@@ -141,7 +144,9 @@ pub fn select_evaluation(state: &AppState, now: i64) -> Evaluation {
         .profile
         .clone()
         .filter(|p| p.model.model_id == model.model_id);
-    let r = state.r_override.unwrap_or_else(|| estimate_r(signals.task, &model));
+    let r = state
+        .r_override
+        .unwrap_or_else(|| estimate_r(signals.task, &model));
     let result = route(&RouteInput {
         signals: &signals,
         model: &model,
@@ -458,8 +463,7 @@ pub fn load_measured() -> Vec<MeasuredEntry> {
             && entry.ratio > 0.0
             && load_profile(&entry.id)
                 .map(|profile| {
-                    profile.measurement.method
-                        == langbridge_core::types::ProfileSource::ApiProbe
+                    profile.measurement.method == langbridge_core::types::ProfileSource::ApiProbe
                 })
                 .unwrap_or(false)
     });
@@ -557,9 +561,7 @@ impl AppCtx {
         if model_id != self.state.get_untracked().model_id {
             self.set_model(model_id.clone());
         }
-        if load_profile(&model_id).is_none()
-            && langbridge_core::evidence::has_evidence(&model_id)
-        {
+        if load_profile(&model_id).is_none() && langbridge_core::evidence::has_evidence(&model_id) {
             self.calibrate(Some(model_id));
         }
     }
@@ -608,11 +610,8 @@ impl AppCtx {
                 return;
             }
         };
-        let profile = profile_from_calibration(
-            &model_id,
-            calibration.clone(),
-            Some(ProfileSource::Builtin),
-        );
+        let profile =
+            profile_from_calibration(&model_id, calibration.clone(), Some(ProfileSource::Builtin));
         let prev = current
             .profile
             .as_ref()
@@ -638,9 +637,7 @@ impl AppCtx {
                 if current_generation() != target_generation {
                     return;
                 }
-                if state_signal.get_untracked().calibration.status
-                    != CalibrationStatus::Running
-                {
+                if state_signal.get_untracked().calibration.status != CalibrationStatus::Running {
                     return;
                 }
                 match event {
@@ -692,8 +689,11 @@ impl AppCtx {
                                     PROBE.progress_count(step.index, step.total)
                                 },
                             });
-                            s.calibration.progress =
-                                if step.total > 0 { step.index as f64 / step.total as f64 } else { 0.0 };
+                            s.calibration.progress = if step.total > 0 {
+                                step.index as f64 / step.total as f64
+                            } else {
+                                0.0
+                            };
                         });
                         let id = next_log(&log_seq);
                         push_log(
@@ -780,9 +780,7 @@ impl AppCtx {
                         });
                         return;
                     }
-                    let hint = PROBE
-                        .hint(&crate::probe::code_str(error.code))
-                        .to_string();
+                    let hint = PROBE.hint(&crate::probe::code_str(error.code)).to_string();
                     state_signal.update(|s| {
                         s.calibration.status = CalibrationStatus::Error;
                         s.calibration.error = Some(error);
@@ -1040,7 +1038,6 @@ pub fn install_app_state() -> AppCtx {
     });
 
     Effect::new({
-        let state = state;
         move |_| {
             let text = state.get().text;
             set_timeout(
@@ -1080,8 +1077,7 @@ pub fn install_app_state() -> AppCtx {
                         if over_limit && !warned.get() {
                             warned.set(true);
                             state.update(|s| {
-                                s.storage_warning =
-                                    Some(STORAGE.text_trimmed(MAX_PERSISTED_TEXT))
+                                s.storage_warning = Some(STORAGE.text_trimmed(MAX_PERSISTED_TEXT))
                             });
                         }
                         if persist_prefs(&state.get_untracked()).is_err() && !warned.get() {
@@ -1089,18 +1085,15 @@ pub fn install_app_state() -> AppCtx {
                             state.update(|s| {
                                 s.storage_warning = Some(STORAGE.unavailable.to_string())
                             });
-                            *warn_timer.borrow_mut() = Some(gloo_timers::callback::Timeout::new(
-                                8000,
-                                move || {
+                            *warn_timer.borrow_mut() =
+                                Some(gloo_timers::callback::Timeout::new(8000, move || {
                                     state.update(|s| {
-                                        if s.storage_warning.as_deref()
-                                            == Some(STORAGE.unavailable)
+                                        if s.storage_warning.as_deref() == Some(STORAGE.unavailable)
                                         {
                                             s.storage_warning = None;
                                         }
                                     });
-                                },
-                            ));
+                                }));
                         }
                     }
                 },

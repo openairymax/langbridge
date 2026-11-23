@@ -6,10 +6,8 @@ use langbridge_core::guard::{parse_output, postprocess, PostprocessOptions};
 use langbridge_core::inject::{build_injection_plan, has_language_conflict, InjectionInput};
 use langbridge_core::profiles::{build_profile, get_model, meta_for};
 use langbridge_core::router::{route, RouteInput};
-use langbridge_core::savings::{
-    compute_savings, estimate_r, SavingsInput, MIN_R_SWITCH,
-};
-use langbridge_core::signals::{detect_task, extract_signals, estimate_tokens};
+use langbridge_core::savings::{compute_savings, estimate_r, SavingsInput, MIN_R_SWITCH};
+use langbridge_core::signals::{detect_task, estimate_tokens, extract_signals};
 use langbridge_core::time::{iso_from_ms, parse_iso_ms};
 use langbridge_core::types::{
     CalibrationResult, CostStatus, DecidedBy, InjectionState, Lang, ModelProfile, Observation,
@@ -77,7 +75,8 @@ fn calibrated(ratio_zh: f64, ratio_en: f64) -> CalibrationResult {
 }
 
 fn profile(theme: f64) -> ModelProfile {
-    let model = get_model("deepseek-reasoner").unwrap_or_else(|| meta_for("deepseek-reasoner", None));
+    let model =
+        get_model("deepseek-reasoner").unwrap_or_else(|| meta_for("deepseek-reasoner", None));
     build_profile(model, calibrated(theme, 1.0))
 }
 
@@ -87,9 +86,15 @@ fn now() -> i64 {
 
 #[test]
 fn detects_chinese_and_english() {
-    let zh = extract_signals("请帮我分析这段中文材料的论证结构，并指出其中的逻辑问题。", "");
+    let zh = extract_signals(
+        "请帮我分析这段中文材料的论证结构，并指出其中的逻辑问题。",
+        "",
+    );
     assert_eq!(zh.lang, Lang::Zh);
-    let en = extract_signals("Please analyze the argument structure of this passage and list its flaws.", "");
+    let en = extract_signals(
+        "Please analyze the argument structure of this passage and list its flaws.",
+        "",
+    );
     assert_eq!(en.lang, Lang::En);
     let empty = extract_signals("", "");
     assert_eq!(empty.lang, Lang::En);
@@ -107,8 +112,14 @@ fn code_blocks_do_not_change_language() {
 fn detects_tasks() {
     assert_eq!(detect_task("写一个快速排序函数").task, TaskType::Code);
     assert_eq!(detect_task("证明根号二是无理数").task, TaskType::Math);
-    assert_eq!(detect_task("解释一下这个成语的典故").task, TaskType::Culture);
-    assert_eq!(detect_task("这条法规规定了什么合规要求").task, TaskType::Policy);
+    assert_eq!(
+        detect_task("解释一下这个成语的典故").task,
+        TaskType::Culture
+    );
+    assert_eq!(
+        detect_task("这条法规规定了什么合规要求").task,
+        TaskType::Policy
+    );
     assert_eq!(detect_task("今天天气怎么样").task, TaskType::General);
 }
 
@@ -207,7 +218,12 @@ fn reasoning_models_expect_more_tokens() {
     assert_eq!(estimate_r(TaskType::General, &chat), 1000.0);
 }
 
-fn route_general(text: &str, model_id: &str, p: Option<&ModelProfile>, system: Option<&str>) -> langbridge_core::router::RouteResult {
+fn route_general(
+    text: &str,
+    model_id: &str,
+    p: Option<&ModelProfile>,
+    system: Option<&str>,
+) -> langbridge_core::router::RouteResult {
     let signals = extract_signals(text, "");
     let model = meta_for(model_id, None);
     let r = estimate_r(signals.task, &model);
@@ -275,7 +291,12 @@ fn flat_ratio_keeps_native_language() {
 #[test]
 fn english_input_aligns_to_input() {
     let p = profile(2.0);
-    let res = route_general("Tell me about the weather in your city today.", "deepseek-reasoner", Some(&p), None);
+    let res = route_general(
+        "Tell me about the weather in your city today.",
+        "deepseek-reasoner",
+        Some(&p),
+        None,
+    );
     assert_eq!(res.routing.decided_by, DecidedBy::L3);
     assert_eq!(res.routing.decided_lang, Lang::En);
 }
@@ -297,7 +318,9 @@ fn system_prompt_conflict_removes_savings() {
 fn conflict_detection_is_narrow() {
     assert!(has_language_conflict(Some("Please answer in Chinese.")));
     assert!(has_language_conflict(Some("请用中文回答")));
-    assert!(!has_language_conflict(Some("You are a language model expert.")));
+    assert!(!has_language_conflict(Some(
+        "You are a language model expert."
+    )));
     assert!(!has_language_conflict(None));
 }
 
@@ -400,8 +423,10 @@ fn base_url_normalization() {
         normalize_base("http://localhost:11434/v1"),
         "http://localhost:11434/v1/chat/completions"
     );
-    assert!(normalize_base("https://api.deepseek.com/v1/chat/completions")
-        .ends_with("/v1/chat/completions"));
+    assert!(
+        normalize_base("https://api.deepseek.com/v1/chat/completions")
+            .ends_with("/v1/chat/completions")
+    );
     assert_eq!(normalize_base(""), "");
 }
 

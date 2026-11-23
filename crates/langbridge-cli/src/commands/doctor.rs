@@ -50,12 +50,8 @@ pub fn doctor_command(args: &ParsedArgs) -> Result<i32, crate::store::CliError> 
 
     let runtime_ok = true;
 
-    let mut home_ok = true;
-    if ensure_home().is_err() {
-        home_ok = false;
-        ok = false;
-    } else if !dir_writable(&home_dir()) {
-        home_ok = false;
+    let home_ok = ensure_home().is_ok() && dir_writable(&home_dir());
+    if !home_ok {
         ok = false;
     }
 
@@ -186,7 +182,11 @@ pub fn doctor_command(args: &ParsedArgs) -> Result<i32, crate::store::CliError> 
                     &format!("  {}", m.id),
                     &format!(
                         "{} · ratio {:.3} · conf {:.2} · {}",
-                        if m.ok { green("可用") } else { red("不可用") },
+                        if m.ok {
+                            green("可用")
+                        } else {
+                            red("不可用")
+                        },
                         m.ratio.unwrap_or(0.0),
                         m.conf.unwrap_or(0.0),
                         m.tokenizer.as_deref().unwrap_or("")

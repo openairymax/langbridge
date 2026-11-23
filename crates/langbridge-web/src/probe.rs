@@ -1,4 +1,4 @@
-//! 浏览器侧 API 探测：基于 fetch 与 AbortController 发请求并读取响应。
+//! 浏览器侧 API 探测：fetch 请求与响应读取。
 
 use std::cell::Cell;
 use std::rc::Rc;
@@ -14,18 +14,36 @@ use wasm_bindgen::closure::Closure;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{
-    AbortController, AbortSignal, Headers, Request, RequestCache, RequestInit, RequestMode, Response,
+    AbortController, AbortSignal, Headers, Request, RequestCache, RequestInit, RequestMode,
+    Response,
 };
 
 const NETWORK_ERROR_MESSAGE: &str = "连不上：常见原因是跨域（CORS）被拦截，或网络不通";
 
 #[derive(Debug, Clone)]
 pub enum ProbeEvent {
-    Start { total: usize },
-    Step { step: ProbeStep },
-    Retry { step: ProbeStep, attempt: u32, delay_ms: f64, message: String },
-    Ok { step: ProbeStep, prompt_tokens: f64 },
-    Fail { step: ProbeStep, error: EngineError, completed: usize, total: usize },
+    Start {
+        total: usize,
+    },
+    Step {
+        step: ProbeStep,
+    },
+    Retry {
+        step: ProbeStep,
+        attempt: u32,
+        delay_ms: f64,
+        message: String,
+    },
+    Ok {
+        step: ProbeStep,
+        prompt_tokens: f64,
+    },
+    Fail {
+        step: ProbeStep,
+        error: EngineError,
+        completed: usize,
+        total: usize,
+    },
 }
 
 #[derive(Clone)]
@@ -180,18 +198,17 @@ async fn reachable_without_cors(url: &str) -> bool {
     let Ok(request) = Request::new_with_str_and_init(url, &init) else {
         return false;
     };
-    JsFuture::from(win.fetch_with_request(&request)).await.is_ok()
+    JsFuture::from(win.fetch_with_request(&request))
+        .await
+        .is_ok()
 }
 
-async fn classify_network_failure(
-    url: &str,
-    signal: Option<&AbortSignal>,
-) -> EngineError {
+async fn classify_network_failure(url: &str, signal: Option<&AbortSignal>) -> EngineError {
     if is_aborted(signal) {
         return cancelled();
     }
     let offline = web_sys::window()
-        .map(|w| w.navigator().on_line() == false)
+        .map(|w| !w.navigator().on_line())
         .unwrap_or(false);
     if offline {
         return EngineError::new(ErrorCode::NetworkError, NETWORK_ERROR_MESSAGE);
@@ -305,8 +322,8 @@ async fn fetch_once(
     if is_aborted(signal) {
         return Err(cancelled());
     }
-    let controller =
-        AbortController::new().map_err(|_| EngineError::new(ErrorCode::NetworkError, NETWORK_ERROR_MESSAGE))?;
+    let controller = AbortController::new()
+        .map_err(|_| EngineError::new(ErrorCode::NetworkError, NETWORK_ERROR_MESSAGE))?;
     let timed_out = Rc::new(Cell::new(false));
     let timer_flag = Rc::clone(&timed_out);
     let timer_controller = controller.clone();
@@ -359,7 +376,10 @@ async fn fetch_once(
                 cors.probed.set(true);
                 Err(classify_network_failure(url, signal).await)
             } else {
-                Err(EngineError::new(ErrorCode::NetworkError, NETWORK_ERROR_MESSAGE))
+                Err(EngineError::new(
+                    ErrorCode::NetworkError,
+                    NETWORK_ERROR_MESSAGE,
+                ))
             }
         }
     }
@@ -376,7 +396,9 @@ async fn probe_prompt_tokens(
     let retries = opts.retries.unwrap_or(1);
     let mut attempt = 0u32;
     let mut adaptations = 3u32;
-    let cors = CorsProbeState { probed: Cell::new(false) };
+    let cors = CorsProbeState {
+        probed: Cell::new(false),
+    };
 
     loop {
         let headers = Headers::new()
@@ -495,12 +517,7 @@ pub async fn calibrate_via_api(opts: ProbeOptions) -> Result<CalibrationResult, 
     let mut caps = PayloadCaps::default();
 
     for step in &steps {
-        emit(
-            &opts,
-            ProbeEvent::Step {
-                step: step.clone(),
-            },
-        );
+        emit(&opts, ProbeEvent::Step { step: step.clone() });
         let text = step_sample(step, base_n);
         match probe_prompt_tokens(&opts, &text, &mut caps, step).await {
             Ok(prompt_tokens) => {

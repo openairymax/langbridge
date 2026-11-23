@@ -57,7 +57,8 @@ fn backoff_ms(attempt: u32) -> u64 {
     let jitter = (std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.subsec_nanos())
-        .unwrap_or(0) % 250) as f64;
+        .unwrap_or(0)
+        % 250) as f64;
     3_000.min((base + jitter).round() as u64)
 }
 
@@ -69,7 +70,10 @@ fn is_timeout_text(msg: &str) -> bool {
 fn timeout_error(timeout_ms: u64) -> EngineError {
     EngineError::new(
         ErrorCode::Timeout,
-        format!("请求超时（{} 秒无响应）", (timeout_ms as f64 / 1000.0).round() as i64),
+        format!(
+            "请求超时（{} 秒无响应）",
+            (timeout_ms as f64 / 1000.0).round() as i64
+        ),
     )
 }
 
@@ -193,7 +197,8 @@ pub fn calibrate_via_api(opts: &ApiProbeOptions<'_>) -> Result<CalibrationResult
                     continue;
                 }
                 if is_retryable(error.code) && attempt < retries {
-                    let delay = retry_after_ms(&resp.headers).unwrap_or_else(|| backoff_ms(attempt));
+                    let delay =
+                        retry_after_ms(&resp.headers).unwrap_or_else(|| backoff_ms(attempt));
                     std::thread::sleep(Duration::from_millis(delay));
                     attempt += 1;
                     continue;

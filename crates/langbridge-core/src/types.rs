@@ -1,4 +1,4 @@
-//! 核心数据契约。纯类型，不含 DOM 与平台 API，供 Web、CLI 与代理共用。
+//! 核心数据契约，Web、CLI 与代理共用。
 
 use serde::{Deserialize, Serialize};
 

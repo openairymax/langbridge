@@ -94,7 +94,9 @@ pub fn spawn_copy(text: String, on_done: Option<std::rc::Rc<dyn Fn(bool)>>) {
 }
 
 pub fn scroll_to(id: &str) {
-    let Some(win) = window() else { return; };
+    let Some(win) = window() else {
+        return;
+    };
     if let Some(el) = win.document().and_then(|doc| doc.get_element_by_id(id)) {
         el.scroll_into_view();
     }
@@ -113,7 +115,10 @@ pub fn reveal_verdict_if_stacked() {
     if !narrow {
         return;
     }
-    if let Some(el) = win.document().and_then(|doc| doc.get_element_by_id("verdict")) {
+    if let Some(el) = win
+        .document()
+        .and_then(|doc| doc.get_element_by_id("verdict"))
+    {
         el.scroll_into_view();
     }
 }
@@ -186,6 +191,8 @@ pub async fn read_file_text(file: &File) -> Result<String, String> {
     });
     match JsFuture::from(promise).await {
         Ok(value) => Ok(value.as_string().unwrap_or_default()),
-        Err(err) => Err(err.as_string().unwrap_or_else(|| "读取文件失败".to_string())),
+        Err(err) => Err(err
+            .as_string()
+            .unwrap_or_else(|| "读取文件失败".to_string())),
     }
 }

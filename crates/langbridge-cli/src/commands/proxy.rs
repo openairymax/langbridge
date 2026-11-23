@@ -2,11 +2,11 @@
 
 use std::path::Path;
 
+use langbridge_core::now_ms;
 use langbridge_core::profiles::meta_for;
 use langbridge_core::router::{route, RouteInput};
 use langbridge_core::savings::estimate_r;
 use langbridge_core::signals::extract_signals;
-use langbridge_core::now_ms;
 
 use crate::args::ParsedArgs;
 use crate::format::{green, js_num, lang_code, line, yellow};
@@ -62,7 +62,10 @@ pub fn proxy_command(args: &ParsedArgs) -> Result<i32, CliError> {
     };
 
     if args.has("dry-run") {
-        let text = args.str("text").unwrap_or("解释一下这段 Rust 代码").to_string();
+        let text = args
+            .str("text")
+            .unwrap_or("解释一下这段 Rust 代码")
+            .to_string();
         let model_id = args
             .str("model")
             .map(|s| s.to_string())
@@ -166,8 +169,7 @@ pub fn proxy_command(args: &ParsedArgs) -> Result<i32, CliError> {
         upstream_timeout_ms,
     };
 
-    let running = start_proxy(opts)
-        .map_err(|e| CliError::new(1, format!("内部错误：{}", e)))?;
+    let running = start_proxy(opts).map_err(|e| CliError::new(1, format!("内部错误：{}", e)))?;
     println!("{} {}", green("代理已启动"), running.url);
     println!("health  {}/health", running.url);
     let _ = running.handle.join();

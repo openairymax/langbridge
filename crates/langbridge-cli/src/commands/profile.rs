@@ -1,11 +1,11 @@
-//! profile 子命令：列出、查看、导入、导出、校验、删除本地画像，或输出画像目录。
+//! profile 子命令：列出、查看、导入、导出、校验与删除画像。
 
 use std::fs;
 use std::io::IsTerminal;
 use std::path::Path;
 
-use langbridge_core::profile_store::{parse_profile_file, serialize_profile};
 use langbridge_core::now_ms;
+use langbridge_core::profile_store::{parse_profile_file, serialize_profile};
 
 use crate::args::ParsedArgs;
 use crate::format::{green, print_profile, source_code, yellow};
@@ -181,8 +181,9 @@ pub fn profile_command(args: &ParsedArgs) -> Result<i32, CliError> {
             .unwrap_or_else(|| export_path_for(&profile).display().to_string());
         if let Some(parent) = Path::new(&out).parent() {
             if !parent.as_os_str().is_empty() {
-                fs::create_dir_all(parent)
-                    .map_err(|e| CliError::new(2, format!("无法创建目录：{}（{}）", parent.display(), e)))?;
+                fs::create_dir_all(parent).map_err(|e| {
+                    CliError::new(2, format!("无法创建目录：{}（{}）", parent.display(), e))
+                })?;
             }
         }
         fs::write(&out, serialize_profile(&profile))

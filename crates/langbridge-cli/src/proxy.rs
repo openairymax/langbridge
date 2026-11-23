@@ -8,9 +8,7 @@ use std::time::{Duration, Instant};
 
 use langbridge_core::calibrate::should_recalibrate;
 use langbridge_core::canonical::summarize_decision;
-use langbridge_core::evidence::{
-    calibrate_from_evidence, has_evidence, normalize_base,
-};
+use langbridge_core::evidence::{calibrate_from_evidence, has_evidence, normalize_base};
 use langbridge_core::guard::{inspect_only, postprocess, PostprocessOptions};
 use langbridge_core::profile_store::{is_expired, profile_from_calibration};
 use langbridge_core::profiles::{list_models, meta_for};
@@ -146,10 +144,19 @@ fn is_allowed_host(header: Option<&str>, extra: &[String]) -> bool {
 
 fn cors_headers(origin: &str) -> Vec<(String, String)> {
     vec![
-        ("Access-Control-Allow-Origin".to_string(), origin.to_string()),
+        (
+            "Access-Control-Allow-Origin".to_string(),
+            origin.to_string(),
+        ),
         ("Vary".to_string(), "Origin".to_string()),
-        ("Access-Control-Allow-Headers".to_string(), ALLOW_HEADERS.to_string()),
-        ("Access-Control-Allow-Methods".to_string(), "POST, GET, OPTIONS".to_string()),
+        (
+            "Access-Control-Allow-Headers".to_string(),
+            ALLOW_HEADERS.to_string(),
+        ),
+        (
+            "Access-Control-Allow-Methods".to_string(),
+            "POST, GET, OPTIONS".to_string(),
+        ),
         ("Access-Control-Max-Age".to_string(), "86400".to_string()),
     ]
 }
@@ -211,7 +218,13 @@ fn send_json(
     write_response(stream, status, &headers, &body)
 }
 
-fn send_error(stream: &mut TcpStream, status: u16, cors: Option<&str>, err_type: &str, message: &str) {
+fn send_error(
+    stream: &mut TcpStream,
+    status: u16,
+    cors: Option<&str>,
+    err_type: &str,
+    message: &str,
+) {
     let payload = serde_json::json!({ "error": { "message": message, "type": err_type } });
     let _ = send_json(stream, status, cors, &payload);
 }
@@ -242,7 +255,9 @@ fn read_line(reader: &mut BufReader<TcpStream>) -> Option<String> {
 
 fn read_exact_vec(reader: &mut BufReader<TcpStream>, len: usize) -> Result<Vec<u8>, ReadError> {
     let mut buf = vec![0u8; len];
-    reader.read_exact(&mut buf).map_err(|_| ReadError::Bad("read"))?;
+    reader
+        .read_exact(&mut buf)
+        .map_err(|_| ReadError::Bad("read"))?;
     Ok(buf)
 }
 
@@ -494,8 +509,7 @@ fn calibrate_model(shared: &Arc<Shared>, model_id: &str, reason: &str) {
         if has_evidence(model_id) {
             let cal = calibrate_from_evidence(model_id).map_err(|e| e.message)?;
             let profile = profile_from_calibration(model_id, cal, None);
-            write_profile(&profile, None)
-                .map_err(|e| e.message)?;
+            write_profile(&profile, None).map_err(|e| e.message)?;
         } else {
             let Some(key) = probe_key(&shared.opts) else {
                 if !shared.opts.quiet {
@@ -596,7 +610,10 @@ fn upstream_headers(req: &Request, opts: &ProxyOptions) -> Vec<(String, String)>
         headers.push(("api-key".to_string(), key.clone()));
     }
     if let Some(auth) = auth_header(req, opts) {
-        if host_of(&opts.upstream).to_ascii_lowercase().ends_with(".openai.azure.com") {
+        if host_of(&opts.upstream)
+            .to_ascii_lowercase()
+            .ends_with(".openai.azure.com")
+        {
             let stripped = if auth.to_ascii_lowercase().starts_with("bearer ") {
                 auth[7..].trim().to_string()
             } else {
@@ -684,31 +701,46 @@ fn handle_chat(shared: &Arc<Shared>, stream: &mut TcpStream, req: &Request, cors
     let body: Value = match serde_json::from_slice(&req.body) {
         Ok(v) => v,
         Err(_) => {
-            send_error(stream, 400, cors, "invalid_request_error", "请求体不是合法 JSON");
+            send_error(
+                stream,
+                400,
+                cors,
+                "invalid_request_error",
+                "请求体不是合法 JSON",
+            );
             return;
         }
     };
-    let messages: Option<Vec<Value>> = body
-        .get("messages")
-        .and_then(Value::as_array)
-        .cloned();
+    let messages: Option<Vec<Value>> = body.get("messages").and_then(Value::as_array).cloned();
     let Some(messages) = messages else {
-        send_error(stream, 400, cors, "invalid_request_error", "缺少 messages 数组");
+        send_error(
+            stream,
+            400,
+            cors,
+            "invalid_request_error",
+            "缺少 messages 数组",
+        );
         return;
     };
 
     let raw = last_user_text(&messages);
-    let body_model = body.get("model").and_then(Value::as_str).map(|s| s.to_string());
-    let model_id = body_model
-        .clone()
-        .unwrap_or_else(|| opts.model.clone());
+    let body_model = body
+        .get("model")
+        .and_then(Value::as_str)
+        .map(|s| s.to_string());
+    let model_id = body_model.clone().unwrap_or_else(|| opts.model.clone());
     let profile = match &opts.profile {
-        Some(p) if body_model.is_none() || body_model.as_deref() == Some(p.model.model_id.as_str()) => {
+        Some(p)
+            if body_model.is_none() || body_model.as_deref() == Some(p.model.model_id.as_str()) =>
+        {
             Some(p.clone())
         }
         _ => resolve_profile(&model_id),
     };
-    let model = meta_for(&model_id, profile.as_ref().map(|p| p.measurement.effective_ratio));
+    let model = meta_for(
+        &model_id,
+        profile.as_ref().map(|p| p.measurement.effective_ratio),
+    );
     let signals = extract_signals(&raw, &history_text(&messages));
     let r = estimate_r(signals.task, &model);
     let is_stream = body.get("stream").and_then(Value::as_bool) == Some(true);
@@ -773,7 +805,8 @@ fn handle_chat(shared: &Arc<Shared>, stream: &mut TcpStream, req: &Request, cors
     }
 
     if is_stream {
-        let content_type = upstream_content_type(&upstream.headers, "text/event-stream; charset=utf-8");
+        let content_type =
+            upstream_content_type(&upstream.headers, "text/event-stream; charset=utf-8");
         let mut headers = base_headers;
         headers.push(("Content-Type".to_string(), content_type));
         headers.push(("Cache-Control".to_string(), "no-cache".to_string()));
@@ -948,14 +981,26 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
     let req = match read_request(&stream) {
         Ok(r) => r,
         Err(ReadError::TooLarge) => {
-            send_error(&mut stream, 413, None, "payload_too_large", "请求体超过 8MB");
+            send_error(
+                &mut stream,
+                413,
+                None,
+                "payload_too_large",
+                "请求体超过 8MB",
+            );
             return;
         }
         Err(ReadError::Bad(reason)) => {
             if !shared.opts.quiet {
                 eprintln!("请求体读取失败：{}", reason);
             }
-            send_error(&mut stream, 400, None, "invalid_request_error", "请求体读取失败");
+            send_error(
+                &mut stream,
+                400,
+                None,
+                "invalid_request_error",
+                "请求体读取失败",
+            );
             return;
         }
         Err(ReadError::Closed) => return,
@@ -968,10 +1013,19 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
         _ => None,
     };
     if origin_header.is_some() && trusted_origin.is_none() {
-        send_error(&mut stream, 403, None, "forbidden_origin", "不允许的 Origin");
+        send_error(
+            &mut stream,
+            403,
+            None,
+            "forbidden_origin",
+            "不允许的 Origin",
+        );
         return;
     }
-    if !is_allowed_host(req.headers.get("host").map(|s| s.as_str()), &opts.allow_hosts) {
+    if !is_allowed_host(
+        req.headers.get("host").map(|s| s.as_str()),
+        &opts.allow_hosts,
+    ) {
         send_error(&mut stream, 403, None, "forbidden_host", "不允许的 Host");
         return;
     }
@@ -980,8 +1034,14 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
     if req.method == "OPTIONS" {
         let mut headers: Vec<(String, String)> = cors.map(cors_headers).unwrap_or_default();
         if cors.is_none() {
-            headers.push(("Access-Control-Allow-Headers".to_string(), ALLOW_HEADERS.to_string()));
-            headers.push(("Access-Control-Allow-Methods".to_string(), "POST, GET, OPTIONS".to_string()));
+            headers.push((
+                "Access-Control-Allow-Headers".to_string(),
+                ALLOW_HEADERS.to_string(),
+            ));
+            headers.push((
+                "Access-Control-Allow-Methods".to_string(),
+                "POST, GET, OPTIONS".to_string(),
+            ));
         }
         let _ = write_response(&mut stream, 204, &headers, b"");
         return;
@@ -1008,7 +1068,8 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
                 .map(|p| p.model.model_id.clone())
                 .unwrap_or_else(|| "deepseek-reasoner".to_string())
         };
-        let payload = serde_json::json!({ "ok": true, "upstreamHost": upstream_host, "model": model });
+        let payload =
+            serde_json::json!({ "ok": true, "upstreamHost": upstream_host, "model": model });
         let _ = send_json(&mut stream, 200, cors, &payload);
         return;
     }
@@ -1020,7 +1081,10 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
             headers.push(("Allow".to_string(), "GET, OPTIONS".to_string()));
             let payload = serde_json::json!({ "error": { "message": "仅支持 GET /v1/models", "type": "method_not_allowed" } });
             let body = serde_json::to_vec(&payload).unwrap_or_default();
-            headers.push(("Content-Type".to_string(), "application/json; charset=utf-8".to_string()));
+            headers.push((
+                "Content-Type".to_string(),
+                "application/json; charset=utf-8".to_string(),
+            ));
             let _ = write_response(&mut stream, 405, &headers, &body);
             return;
         }
@@ -1040,7 +1104,14 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
         return;
     }
 
-    if req.method == "POST" && req.url.split('?').next().unwrap_or("").ends_with("/chat/completions") {
+    if req.method == "POST"
+        && req
+            .url
+            .split('?')
+            .next()
+            .unwrap_or("")
+            .ends_with("/chat/completions")
+    {
         handle_chat(&shared, &mut stream, &req, cors);
         return;
     }
@@ -1055,7 +1126,8 @@ fn handle_connection(mut stream: TcpStream, shared: Arc<Shared>) {
 }
 
 pub fn start_proxy(opts: ProxyOptions) -> Result<RunningProxy, String> {
-    target_url(&opts.upstream).ok_or_else(|| "上游地址非法：需要合法的 http(s) 地址".to_string())?;
+    target_url(&opts.upstream)
+        .ok_or_else(|| "上游地址非法：需要合法的 http(s) 地址".to_string())?;
     let listener = TcpListener::bind((opts.host.as_str(), opts.port))
         .map_err(|e| format!("监听 {}:{} 失败：{}", opts.host, opts.port, e))?;
     let local = listener

@@ -1,6 +1,8 @@
-//! 模型元数据与原生语言推断。原生语言以元数据为准，不依据比值推断已登记模型。
+//! 模型元数据与原生语言推断。
 
-use crate::types::{CalibrationResult, Family, Lang, ModelMeta, ModelProfile, Policy, PolicyMode, Provenance};
+use crate::types::{
+    CalibrationResult, Family, Lang, ModelMeta, ModelProfile, Policy, PolicyMode, Provenance,
+};
 
 pub const RATIO_HIGH_DEFAULT: f64 = 1.10;
 pub const RATIO_LOW_DEFAULT: f64 = 0.9;
@@ -41,8 +43,22 @@ pub fn models() -> Vec<ModelMeta> {
             false,
             65536,
         ),
-        meta("qwen3-max", "Qwen3-Max", Family::Qwen, Some(Lang::Zh), true, 262144),
-        meta("gpt-4o", "GPT-4o", Family::Other, Some(Lang::En), false, 128000),
+        meta(
+            "qwen3-max",
+            "Qwen3-Max",
+            Family::Qwen,
+            Some(Lang::Zh),
+            true,
+            262144,
+        ),
+        meta(
+            "gpt-4o",
+            "GPT-4o",
+            Family::Other,
+            Some(Lang::En),
+            false,
+            128000,
+        ),
         meta(
             "claude-sonnet-4-5",
             "Claude Sonnet 4.5",
@@ -90,7 +106,11 @@ fn regex_o_series(lower: &str) -> bool {
     matches!(chars.next(), Some('o')) && matches!(chars.next(), Some(c) if ('1'..='9').contains(&c))
 }
 
-pub fn infer_native_lang(model_id: &str, family: Option<Family>, ratio: Option<f64>) -> Option<Lang> {
+pub fn infer_native_lang(
+    model_id: &str,
+    family: Option<Family>,
+    ratio: Option<f64>,
+) -> Option<Lang> {
     if let Some(known) = get_model(model_id) {
         return known.native_lang;
     }
@@ -102,7 +122,13 @@ pub fn infer_native_lang(model_id: &str, family: Option<Family>, ratio: Option<f
         return Some(Lang::Zh);
     }
     match fam {
-        Family::Deepseek => ratio.map(|r| if r > RATIO_HIGH_DEFAULT { Lang::En } else { Lang::Zh }),
+        Family::Deepseek => ratio.map(|r| {
+            if r > RATIO_HIGH_DEFAULT {
+                Lang::En
+            } else {
+                Lang::Zh
+            }
+        }),
         Family::Other => Some(Lang::En),
         Family::Qwen => Some(Lang::Zh),
     }
@@ -124,9 +150,13 @@ pub fn meta_for(model_id: &str, ratio: Option<f64>) -> ModelMeta {
 }
 
 pub fn build_profile(model: ModelMeta, measurement: CalibrationResult) -> ModelProfile {
-    let native = model
-        .native_lang
-        .or_else(|| infer_native_lang(&model.model_id, Some(model.family), Some(measurement.effective_ratio)));
+    let native = model.native_lang.or_else(|| {
+        infer_native_lang(
+            &model.model_id,
+            Some(model.family),
+            Some(measurement.effective_ratio),
+        )
+    });
     let mut model = model;
     model.native_lang = native;
     let reproduce = format!(

@@ -1,4 +1,4 @@
-//! 请求与决策遥测的规范化：只做字段映射，不校验输入，调用方保证数据完整。
+//! 请求与决策遥测的规范化。
 
 use crate::types::{
     CanonicalRequest, DecisionRecord, DecisionSummary, InjectionPlan, InjectionState, ProfileRef,
@@ -128,7 +128,9 @@ pub fn summarize_decision(
         gross_saved_tokens: savings.map(|s| s.gross).unwrap_or(0.0),
         overhead_tokens: savings.map(|s| s.overhead).unwrap_or(0.0),
         net_saved_tokens: savings.map(|s| s.net).unwrap_or(0.0),
-        inject: injection.map(|i| i.state).unwrap_or(InjectionState::Disabled),
+        inject: injection
+            .map(|i| i.state)
+            .unwrap_or(InjectionState::Disabled),
         duration_ms,
     }
 }

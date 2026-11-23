@@ -22,10 +22,7 @@ impl ParsedArgs {
     }
 
     pub fn get(&self, name: &str) -> Option<&FlagValue> {
-        self.flags
-            .iter()
-            .find(|(k, _)| k == name)
-            .map(|(_, v)| v)
+        self.flags.iter().find(|(k, _)| k == name).map(|(_, v)| v)
     }
 
     pub fn has(&self, name: &str) -> bool {
@@ -60,7 +57,10 @@ pub fn parse_args(argv: &[String]) -> ParsedArgs {
         }
         if let Some(eq) = a.find('=') {
             if eq > 0 {
-                out.set(a[2..eq].to_string(), FlagValue::Str(a[eq + 1..].to_string()));
+                out.set(
+                    a[2..eq].to_string(),
+                    FlagValue::Str(a[eq + 1..].to_string()),
+                );
                 i += 1;
                 continue;
             }

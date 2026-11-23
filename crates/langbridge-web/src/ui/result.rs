@@ -3,10 +3,10 @@
 use leptos::prelude::*;
 
 use crate::copy::{
-    CHAIN, EMPTY, FLOW, GATE_NET, GATE_THRESHOLD, RESULT, R_LIVE_NOTE, R_PRESETS, R_ROW_LABEL,
-    SUFFIX, UI, SavingsStory, applicability, builtin_row_text, chain_foot, layer, prompt_suffix,
-    result_net_text, result_ratio_text, result_summary_text, save_line_parts, savings_story,
-    signal_rows, verdict_copy, why_mark,
+    applicability, builtin_row_text, chain_foot, layer, prompt_suffix, result_net_text,
+    result_ratio_text, result_summary_text, save_line_parts, savings_story, signal_rows,
+    verdict_copy, why_mark, SavingsStory, CHAIN, EMPTY, FLOW, GATE_NET, GATE_THRESHOLD, RESULT,
+    R_LIVE_NOTE, R_PRESETS, R_ROW_LABEL, SUFFIX, UI,
 };
 use crate::data::builtin_rows;
 use crate::state::AppCtx;

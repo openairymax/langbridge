@@ -6,9 +6,9 @@ use wasm_bindgen::JsCast;
 use langbridge_core::evidence::has_evidence;
 use langbridge_core::profiles::models;
 
-use crate::copy::{DEMO, ModelNoteKind, UI, action_label, fmt2, model_note};
+use crate::copy::{action_label, fmt2, model_note, ModelNoteKind, DEMO, UI};
 use crate::data::EXAMPLES;
-use crate::state::{AppCtx, CalibrationStatus, source_key};
+use crate::state::{source_key, AppCtx, CalibrationStatus};
 
 const CUSTOM_ID: &str = "__custom__";
 
@@ -100,8 +100,7 @@ pub fn AskCard() -> impl IntoView {
             .profile
             .as_ref()
             .map(|profile| {
-                profile.measurement.method
-                    == langbridge_core::types::ProfileSource::ApiProbe
+                profile.measurement.method == langbridge_core::types::ProfileSource::ApiProbe
             })
             .unwrap_or(false);
         if !api_profile && has_evidence(&state.model_id) {

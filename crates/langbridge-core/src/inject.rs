@@ -1,4 +1,4 @@
-//! 语言约束 system prompt 的构造与注入决策。
+//! 语言约束提示的构造与注入决策。
 
 use std::sync::OnceLock;
 
@@ -168,7 +168,10 @@ pub fn build_injection_plan(input: &InjectionInput<'_>) -> InjectionPlan {
     let reason = if input.routing.quality_first {
         "质量优先：注入语言约束以稳定推理语言".to_string()
     } else {
-        format!("净收益为正：{}", input.savings.map(|s| s.reason.as_str()).unwrap_or(""))
+        format!(
+            "净收益为正：{}",
+            input.savings.map(|s| s.reason.as_str()).unwrap_or("")
+        )
     };
 
     InjectionPlan {

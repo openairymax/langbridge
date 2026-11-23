@@ -5,8 +5,8 @@ use wasm_bindgen::JsCast;
 
 use langbridge_core::evidence::calibrate_from_evidence;
 
-use crate::copy::{FLOW, PROBE, fmt2};
-use crate::probe::{ConnectionCheck, code_str};
+use crate::copy::{fmt2, FLOW, PROBE};
+use crate::probe::{code_str, ConnectionCheck};
 use crate::state::{AppCtx, CalibrationStatus, ProbeLogStatus};
 
 #[component]
@@ -17,7 +17,10 @@ pub fn ApiProbe() -> impl IntoView {
     let base_url = move || state().probe_base_url;
     let preset_for_url = move |url: &str| {
         let target = normalize_base(url);
-        PROBE.presets.iter().find(|p| normalize_base(p.base_url) == target)
+        PROBE
+            .presets
+            .iter()
+            .find(|p| normalize_base(p.base_url) == target)
     };
     let provider_value = move || {
         preset_for_url(&base_url())
@@ -117,8 +120,7 @@ pub fn ApiProbe() -> impl IntoView {
     let source_label = move || match state().profile {
         None => PROBE.source_none,
         Some(profile)
-            if profile.measurement.method
-                == langbridge_core::types::ProfileSource::ApiProbe =>
+            if profile.measurement.method == langbridge_core::types::ProfileSource::ApiProbe =>
         {
             PROBE.source_api
         }
@@ -198,7 +200,7 @@ pub fn ApiProbe() -> impl IntoView {
                             class="probe-select"
                             aria-label=PROBE.provider_aria
                             on:change=on_provider
-                            prop:value=move || provider_value()
+                            prop:value=provider_value
                         >
                             {PROBE
                                 .presets
@@ -297,7 +299,7 @@ pub fn ApiProbe() -> impl IntoView {
                         <span class="probe-label">{PROBE.base_url}</span>
                         <input
                             placeholder=PROBE.base_url_placeholder
-                            prop:value=move || base_url()
+                            prop:value=base_url
                             on:input=move |ev| {
                                 ctx.set_probe_base_url(event_target_value(&ev));
                                 invalidate_check();
@@ -361,7 +363,7 @@ pub fn ApiProbe() -> impl IntoView {
                     role="progressbar"
                     aria-valuemin="0"
                     aria-valuemax="100"
-                    aria-valuenow=move || pct()
+                    aria-valuenow=pct
                     aria-label=move || {
                         PROBE.progress_aria(
                             &calibration().step.map(|s| s.label).unwrap_or_default(),
@@ -573,6 +575,14 @@ fn missing_field(base: &str, model: &str, key: &str) -> Option<&'static str> {
 }
 
 fn endpoint_text(base: &str, model: &str) -> String {
-    let host = base.trim().trim_start_matches("https://").trim_start_matches("http://");
-    [host, model.trim()].iter().filter(|s| !s.is_empty()).cloned().collect::<Vec<_>>().join(" · ")
+    let host = base
+        .trim()
+        .trim_start_matches("https://")
+        .trim_start_matches("http://");
+    [host, model.trim()]
+        .iter()
+        .filter(|s| !s.is_empty())
+        .cloned()
+        .collect::<Vec<_>>()
+        .join(" · ")
 }

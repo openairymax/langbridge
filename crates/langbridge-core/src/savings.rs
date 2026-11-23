@@ -1,4 +1,4 @@
-//! 净收益模型：只报告扣除注入开销后的净收益。
+//! 净收益：扣除注入开销后的成本差额。
 
 use crate::profiles::{RATIO_HIGH_DEFAULT, RATIO_LOW_DEFAULT};
 use crate::types::{Lang, ModelMeta, ModelProfile, SavingsResult, TaskType};
@@ -36,7 +36,9 @@ pub struct SavingsInput {
 
 pub fn compute_savings(input: &SavingsInput) -> SavingsResult {
     let r = input.r;
-    let threshold_tokens = input.threshold_tokens.unwrap_or(SWITCH_THRESHOLD_TOKENS_DEFAULT);
+    let threshold_tokens = input
+        .threshold_tokens
+        .unwrap_or(SWITCH_THRESHOLD_TOKENS_DEFAULT);
     let threshold_pct = input.threshold_pct.unwrap_or(SWITCH_THRESHOLD_PCT_DEFAULT);
     let overhead = input.system_tokens.max(0.0) + input.tag_tokens.max(0.0);
     let threshold = (threshold_tokens.max(threshold_pct * r)).round();
@@ -134,7 +136,9 @@ pub struct Thresholds {
 pub fn policy_from_profile(profile: Option<&ModelProfile>) -> Thresholds {
     let stored = profile.map(|p| &p.policy);
     let legacy_band = stored
-        .map(|p| (p.ratio_high - 1.35).abs() < f64::EPSILON && (p.ratio_low - 0.85).abs() < f64::EPSILON)
+        .map(|p| {
+            (p.ratio_high - 1.35).abs() < f64::EPSILON && (p.ratio_low - 0.85).abs() < f64::EPSILON
+        })
         .unwrap_or(false);
     Thresholds {
         threshold_tokens: stored

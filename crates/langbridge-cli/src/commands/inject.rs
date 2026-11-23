@@ -45,7 +45,10 @@ pub fn inject_command(args: &ParsedArgs) -> Result<i32, CliError> {
         Some(p) => Some(p),
         None => read_profile(&model_id)?,
     };
-    let model = meta_for(&model_id, profile.as_ref().map(|p| p.measurement.effective_ratio));
+    let model = meta_for(
+        &model_id,
+        profile.as_ref().map(|p| p.measurement.effective_ratio),
+    );
 
     let task_flag = args.str("task").map(|s| s.to_string());
     if let Some(t) = &task_flag {

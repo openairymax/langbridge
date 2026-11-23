@@ -80,14 +80,22 @@ pub fn calibrate_command(args: &ParsedArgs) -> Result<i32, CliError> {
         .map_err(|err| {
             CliError::new(
                 exit_code_for_error(err.code),
-                format!("校准失败（{}）：{}", crate::util::error_code_str(err.code), err.message),
+                format!(
+                    "校准失败（{}）：{}",
+                    crate::util::error_code_str(err.code),
+                    err.message
+                ),
             )
         })?;
     } else {
         measurement = calibrate_from_evidence(&model_id).map_err(|err| {
             CliError::new(
                 exit_code_for_error(err.code),
-                format!("校准失败（{}）：{}", crate::util::error_code_str(err.code), err.message),
+                format!(
+                    "校准失败（{}）：{}",
+                    crate::util::error_code_str(err.code),
+                    err.message
+                ),
             )
         })?;
     }
@@ -103,10 +111,7 @@ pub fn calibrate_command(args: &ParsedArgs) -> Result<i32, CliError> {
                 .collect::<Vec<_>>()
                 .join(", ")
         };
-        return Err(CliError::new(
-            2,
-            format!("校准未通过质量闸门：{}", detail),
-        ));
+        return Err(CliError::new(2, format!("校准未通过质量闸门：{}", detail)));
     }
 
     let mut rerun: Option<(f64, f64, f64, bool)> = None;
@@ -115,7 +120,10 @@ pub fn calibrate_command(args: &ParsedArgs) -> Result<i32, CliError> {
         match prev {
             None => {
                 if !as_json {
-                    println!("{}", yellow("--rerun：本地没有既有画像，本次结果作为首次测量"));
+                    println!(
+                        "{}",
+                        yellow("--rerun：本地没有既有画像，本次结果作为首次测量")
+                    );
                 }
             }
             Some(prev) => {

@@ -5,21 +5,23 @@ use wasm_bindgen::JsCast;
 
 use langbridge_core::evidence::{evidence_meta, has_evidence, list_evidence_models};
 use langbridge_core::guard::DRIFT_THRESHOLD;
-use langbridge_core::profiles::get_model;
 use langbridge_core::profile_store::{profile_file_name, serialize_profile};
+use langbridge_core::profiles::get_model;
 use langbridge_core::types::InjectionState;
 
 use crate::copy::{
-    ADVANCED, CAL, EVIDENCE, FLOW, PROFILE, R_CUSTOM_ARIA, R_ROW_LABEL, SAVING_METRICS, SECTION,
-    evidence_version_badge, fmt2, fmt3, lang_text, limitations, r_auto_label,
+    evidence_version_badge, fmt2, fmt3, lang_text, limitations, r_auto_label, ADVANCED, CAL,
+    EVIDENCE, FLOW, PROFILE, R_CUSTOM_ARIA, R_ROW_LABEL, SAVING_METRICS, SECTION,
 };
 use crate::data::builtin_rows;
-use crate::state::{
-    AppCtx, CalibrationStatus, ProfileHealth, select_canonical, select_record,
-};
+use crate::state::{select_canonical, select_record, AppCtx, CalibrationStatus, ProfileHealth};
 
 fn reset_button_class(active: bool) -> &'static str {
-    if active { "preset-chip active" } else { "preset-chip" }
+    if active {
+        "preset-chip active"
+    } else {
+        "preset-chip"
+    }
 }
 
 #[component]
@@ -39,10 +41,7 @@ fn CalibrationFold() -> impl IntoView {
     let evaluation = move || ctx.evaluation();
     let profile = move || evaluation().profile;
     let rows = builtin_rows();
-    let max_ratio = rows
-        .iter()
-        .map(|row| row.ratio)
-        .fold(1.0_f64, f64::max);
+    let max_ratio = rows.iter().map(|row| row.ratio).fold(1.0_f64, f64::max);
 
     let auto_r = move || evaluation().r;
     let presets = move || crate::copy::R_PRESETS;
@@ -532,14 +531,17 @@ fn AdvancedFold() -> impl IntoView {
     let copy_state = RwSignal::new(0u8);
 
     let copy_prompt = move |_| {
-        let Some(plan) = injection() else { return; };
+        let Some(plan) = injection() else {
+            return;
+        };
         if plan.system_prompt.trim().is_empty() {
             return;
         }
         copy_state.set(0);
-        let hook = Some(std::rc::Rc::new(move |ok: bool| {
-            copy_state.set(if ok { 1 } else { 2 })
-        }) as std::rc::Rc<dyn Fn(bool)>);
+        let hook = Some(
+            std::rc::Rc::new(move |ok: bool| copy_state.set(if ok { 1 } else { 2 }))
+                as std::rc::Rc<dyn Fn(bool)>,
+        );
         crate::io::spawn_copy(plan.system_prompt.clone(), hook);
     };
 

@@ -75,17 +75,8 @@ fn command_flags(command: &str) -> Option<&'static [&'static str]> {
     match command {
         "doctor" => Some(&[]),
         "calibrate" => Some(&[
-            "model",
-            "method",
-            "via",
-            "n",
-            "rerun",
-            "out",
-            "dry-run",
-            "base-url",
-            "api-key",
-            "key-env",
-            "timeout",
+            "model", "method", "via", "n", "rerun", "out", "dry-run", "base-url", "api-key",
+            "key-env", "timeout",
         ]),
         "decide" | "inject" => Some(&[
             "model",
@@ -156,7 +147,11 @@ fn run(argv: &[String]) -> i32 {
 
     let mut known: Vec<&str> = GLOBAL_FLAGS.to_vec();
     known.extend_from_slice(allowed);
-    if let Some((name, _)) = args.flags.iter().find(|(k, _)| !known.contains(&k.as_str())) {
+    if let Some((name, _)) = args
+        .flags
+        .iter()
+        .find(|(k, _)| !known.contains(&k.as_str()))
+    {
         eprintln!(
             "{}",
             format::red(&format!("未知参数：--{}（用 --help 查看可用参数）", name))

@@ -58,15 +58,15 @@ pub fn decide_command(args: &ParsedArgs) -> Result<i32, CliError> {
             ))
         );
     }
-    let model = meta_for(&model_id, profile.as_ref().map(|p| p.measurement.effective_ratio));
+    let model = meta_for(
+        &model_id,
+        profile.as_ref().map(|p| p.measurement.effective_ratio),
+    );
 
     let task_flag = args.str("task").map(|s| s.to_string());
     if let Some(t) = &task_flag {
         if t != "auto" && parse_task(t).is_none() {
-            return Err(CliError::new(
-                1,
-                format!("--task 只能是 {}", TASKS_MSG),
-            ));
+            return Err(CliError::new(1, format!("--task 只能是 {}", TASKS_MSG)));
         }
     }
 
@@ -100,7 +100,7 @@ pub fn decide_command(args: &ParsedArgs) -> Result<i32, CliError> {
             ));
         }
         let n: f64 = raw_r.trim().parse().unwrap_or(f64::NAN);
-        if !n.is_finite() || n < 1.0 || n > 100000.0 {
+        if !n.is_finite() || !(1.0..=100000.0).contains(&n) {
             return Err(CliError::new(
                 1,
                 format!(
@@ -132,9 +132,7 @@ pub fn decide_command(args: &ParsedArgs) -> Result<i32, CliError> {
         ProfileRef {
             version: profile.as_ref().map(|p| p.version),
             source: profile.as_ref().map(|p| p.provenance.source),
-            measured_at: profile
-                .as_ref()
-                .map(|p| p.measurement.measured_at.clone()),
+            measured_at: profile.as_ref().map(|p| p.measurement.measured_at.clone()),
         },
         iso_from_ms(now),
     );

@@ -1,12 +1,14 @@
 //! 四层路由：硬规则、模型能力、输入对齐与成本闸门。
 
 use crate::calibrate::{calibration_usable, MIN_CONFIDENCE};
-use crate::inject::{build_injection_plan, build_system_prompt, has_language_conflict, InjectionInput, PromptOptions};
+use crate::inject::{
+    build_injection_plan, build_system_prompt, has_language_conflict, InjectionInput, PromptOptions,
+};
 use crate::profile_store::{is_expired, PROFILE_MAX_AGE_DAYS};
 use crate::savings::{compute_savings, policy_from_profile, SavingsInput};
 use crate::types::{
-    CostStatus, DecidedBy, EngineError, EngineResult, ErrorCode, InjectionPlan, InjectionState, Lang,
-    ModelMeta, ModelProfile, Routing, RoutingLayer, RoutingStep, SavingsResult, Signals,
+    CostStatus, DecidedBy, EngineError, EngineResult, ErrorCode, InjectionPlan, InjectionState,
+    Lang, ModelMeta, ModelProfile, Routing, RoutingLayer, RoutingStep, SavingsResult, Signals,
 };
 
 #[derive(Debug, Clone)]
@@ -51,11 +53,25 @@ fn step(
 }
 
 fn terminated_steps(from: RoutingLayer, by: &str) -> Vec<RoutingStep> {
-    const ALL: [RoutingLayer; 4] = [RoutingLayer::L1, RoutingLayer::L2, RoutingLayer::L3, RoutingLayer::L4];
+    const ALL: [RoutingLayer; 4] = [
+        RoutingLayer::L1,
+        RoutingLayer::L2,
+        RoutingLayer::L3,
+        RoutingLayer::L4,
+    ];
     let start = ALL.iter().position(|l| *l == from).unwrap_or(0);
     ALL[start..]
         .iter()
-        .map(|l| step(*l, false, format!("由 {} 终止，未评估", by), 0.0, true, None))
+        .map(|l| {
+            step(
+                *l,
+                false,
+                format!("由 {} 终止，未评估", by),
+                0.0,
+                true,
+                None,
+            )
+        })
         .collect()
 }
 
@@ -108,7 +124,10 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         }
     };
 
-    if matches!(signals.task, crate::types::TaskType::Culture | crate::types::TaskType::Policy) {
+    if matches!(
+        signals.task,
+        crate::types::TaskType::Culture | crate::types::TaskType::Policy
+    ) {
         let label = if signals.task == crate::types::TaskType::Culture {
             "文化类（成语/典故/诗词等）"
         } else {
@@ -123,7 +142,14 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             Some(Lang::Zh),
         ));
         steps.extend(terminated_steps(RoutingLayer::L2, "L1"));
-        return finish(steps, Lang::Zh, DecidedBy::L1, true, CostStatus::BlockedQuality, None);
+        return finish(
+            steps,
+            Lang::Zh,
+            DecidedBy::L1,
+            true,
+            CostStatus::BlockedQuality,
+            None,
+        );
     }
     steps.push(step(
         RoutingLayer::L1,
@@ -134,9 +160,13 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         None,
     ));
 
-    if matches!(model.family, crate::types::Family::Qwen | crate::types::Family::Deepseek)
-        && matches!(signals.task, crate::types::TaskType::Code | crate::types::TaskType::Math)
-    {
+    if matches!(
+        model.family,
+        crate::types::Family::Qwen | crate::types::Family::Deepseek
+    ) && matches!(
+        signals.task,
+        crate::types::TaskType::Code | crate::types::TaskType::Math
+    ) {
         steps.push(step(
             RoutingLayer::L2,
             true,
@@ -149,7 +179,14 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             Some(Lang::Zh),
         ));
         steps.extend(terminated_steps(RoutingLayer::L3, "L2"));
-        return finish(steps, Lang::Zh, DecidedBy::L2, true, CostStatus::BlockedQuality, None);
+        return finish(
+            steps,
+            Lang::Zh,
+            DecidedBy::L2,
+            true,
+            CostStatus::BlockedQuality,
+            None,
+        );
     }
     steps.push(step(
         RoutingLayer::L2,
@@ -164,7 +201,10 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         None,
     ));
 
-    let native = input.profile.and_then(|p| p.model.native_lang).or(model.native_lang);
+    let native = input
+        .profile
+        .and_then(|p| p.model.native_lang)
+        .or(model.native_lang);
     let policy = policy_from_profile(input.profile);
     let usable = input
         .profile
@@ -207,17 +247,73 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
 
     if let Some(align_to) = align_to {
         if !model.reasoning_capable {
-            steps.push(step(RoutingLayer::L3, true, align_reason, 0.9, true, Some(align_to)));
-            steps.push(step(RoutingLayer::L4, false, "由 L3 终止，未评估成本", 0.0, true, None));
-            return finish(steps, align_to, DecidedBy::L3, false, CostStatus::NotApplicable, None);
+            steps.push(step(
+                RoutingLayer::L3,
+                true,
+                align_reason,
+                0.9,
+                true,
+                Some(align_to),
+            ));
+            steps.push(step(
+                RoutingLayer::L4,
+                false,
+                "由 L3 终止，未评估成本",
+                0.0,
+                true,
+                None,
+            ));
+            return finish(
+                steps,
+                align_to,
+                DecidedBy::L3,
+                false,
+                CostStatus::NotApplicable,
+                None,
+            );
         }
         if active.is_none() {
-            steps.push(step(RoutingLayer::L3, true, align_reason, 0.9, true, Some(align_to)));
-            steps.push(step(RoutingLayer::L4, false, "由 L3 终止，未评估成本", 0.0, true, None));
-            return finish(steps, align_to, DecidedBy::L3, false, CostStatus::BlockedUncalibrated, None);
+            steps.push(step(
+                RoutingLayer::L3,
+                true,
+                align_reason,
+                0.9,
+                true,
+                Some(align_to),
+            ));
+            steps.push(step(
+                RoutingLayer::L4,
+                false,
+                "由 L3 终止，未评估成本",
+                0.0,
+                true,
+                None,
+            ));
+            return finish(
+                steps,
+                align_to,
+                DecidedBy::L3,
+                false,
+                CostStatus::BlockedUncalibrated,
+                None,
+            );
         }
-        steps.push(step(RoutingLayer::L3, true, align_reason, 0.9, true, Some(align_to)));
-        steps.push(step(RoutingLayer::L4, false, "由 L3 终止，未评估成本", 0.0, true, None));
+        steps.push(step(
+            RoutingLayer::L3,
+            true,
+            align_reason,
+            0.9,
+            true,
+            Some(align_to),
+        ));
+        steps.push(step(
+            RoutingLayer::L4,
+            false,
+            "由 L3 终止，未评估成本",
+            0.0,
+            true,
+            None,
+        ));
         return finish(steps, align_to, DecidedBy::L3, false, CostStatus::Ok, None);
     }
     steps.push(step(
@@ -245,7 +341,14 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             true,
             None,
         ));
-        return finish(steps, signals.lang, DecidedBy::L4Blocked, false, CostStatus::NotApplicable, None);
+        return finish(
+            steps,
+            signals.lang,
+            DecidedBy::L4Blocked,
+            false,
+            CostStatus::NotApplicable,
+            None,
+        );
     }
 
     let Some(profile) = input.profile else {
@@ -289,10 +392,7 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         steps.push(step(
             RoutingLayer::L4,
             false,
-            format!(
-                "画像属于 {}，与当前模型不一致",
-                profile.model.model_id
-            ),
+            format!("画像属于 {}，与当前模型不一致", profile.model.model_id),
             0.9,
             true,
             None,
@@ -357,7 +457,10 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
         steps.push(step(
             RoutingLayer::L4,
             false,
-            format!("画像已超过 {} 天，需重新校准后才能给出成本结论", PROFILE_MAX_AGE_DAYS),
+            format!(
+                "画像已超过 {} 天，需重新校准后才能给出成本结论",
+                PROFILE_MAX_AGE_DAYS
+            ),
             0.6,
             true,
             None,
@@ -433,7 +536,14 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             true,
             Some(baseline),
         ));
-        return finish(steps, baseline, DecidedBy::L4, false, CostStatus::Ok, Some(savings));
+        return finish(
+            steps,
+            baseline,
+            DecidedBy::L4,
+            false,
+            CostStatus::Ok,
+            Some(savings),
+        );
     }
 
     if savings.switchable {
@@ -451,7 +561,14 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
             true,
             Some(target),
         ));
-        return finish(steps, target, DecidedBy::L4, false, CostStatus::Ok, Some(savings));
+        return finish(
+            steps,
+            target,
+            DecidedBy::L4,
+            false,
+            CostStatus::Ok,
+            Some(savings),
+        );
     }
 
     steps.push(step(
@@ -478,7 +595,10 @@ pub fn route(input: &RouteInput<'_>) -> RouteResult {
 
 pub fn route_or_throw(input: &RouteInput<'_>) -> EngineResult<RouteResult> {
     if input.signals.input_chars == 0 {
-        return Err(EngineError::new(ErrorCode::EmptyInput, "输入为空，无法提取信号"));
+        return Err(EngineError::new(
+            ErrorCode::EmptyInput,
+            "输入为空，无法提取信号",
+        ));
     }
     Ok(route(input))
 }

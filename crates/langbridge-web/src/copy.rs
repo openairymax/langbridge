@@ -1,4 +1,4 @@
-//! 界面文案层：组件不内联业务文案，可见文本集中在这里。
+//! 界面文案：组件的可见文本集中于此。
 
 use langbridge_core::calibrate::{LINEAR_MAX_DEVIATION, RECALIBRATE_EVERY};
 use langbridge_core::evidence::{evidence_meta, has_evidence, list_evidence_models, ProbeStep};
@@ -7,8 +7,8 @@ use langbridge_core::profile_store::PROFILE_MAX_AGE_DAYS;
 use langbridge_core::samples::SCALES;
 use langbridge_core::savings::{SWITCH_THRESHOLD_PCT_DEFAULT, SWITCH_THRESHOLD_TOKENS_DEFAULT};
 use langbridge_core::types::{
-    CalibrationResult, CostStatus, DecidedBy, InjectionPlan, InjectionState, Lang,
-    ProfileSource, Routing, RoutingStep, SavingsResult, Signals, TaskType,
+    CalibrationResult, CostStatus, DecidedBy, InjectionPlan, InjectionState, Lang, ProfileSource,
+    Routing, RoutingStep, SavingsResult, Signals, TaskType,
 };
 
 use crate::state::{Evaluation, ProfileHealth};
@@ -101,7 +101,7 @@ pub fn thousands(n: i64) -> String {
     let digits = n.abs().to_string();
     let mut out = String::new();
     for (i, ch) in digits.chars().enumerate() {
-        if i > 0 && (digits.len() - i) % 3 == 0 {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(ch);
@@ -481,20 +481,14 @@ pub fn signal_rows(signals: &Signals, chars: usize) -> Vec<SignalRow> {
         },
         SignalRow {
             label: "长度",
-            value: format!(
-                "{} 字符 · 约 {} Token",
-                chars, signals.input_tokens_est
-            ),
+            value: format!("{} 字符 · 约 {} Token", chars, signals.input_tokens_est),
             sub: Some("（估算）".to_string()),
         },
     ];
     if signals.mixed {
         rows.push(SignalRow {
             label: "中英混合",
-            value: format!(
-                "中文 {:.0} / 英文 {:.1}",
-                signals.zh_mass, signals.en_mass
-            ),
+            value: format!("中文 {:.0} / 英文 {:.1}", signals.zh_mass, signals.en_mass),
             sub: None,
         });
     }
@@ -572,7 +566,11 @@ pub fn model_note(evaluation: &Evaluation) -> ModelNote {
     let measured = &profile.measurement;
     let ratio = measured.effective_ratio;
     let bigger = if ratio >= 1.0 { Lang::Zh } else { Lang::En };
-    let other = if bigger == Lang::Zh { Lang::En } else { Lang::Zh };
+    let other = if bigger == Lang::Zh {
+        Lang::En
+    } else {
+        Lang::Zh
+    };
     let multiple = if ratio >= 1.0 { ratio } else { 1.0 / ratio };
     let days = status.age_days.map(|d| d as f64);
     let is_builtin = measured.method == ProfileSource::Builtin;
@@ -1107,10 +1105,7 @@ pub struct SaveLineParts {
 pub fn save_line_parts(story: &SavingsStory) -> Option<SaveLineParts> {
     match story {
         SavingsStory::Save {
-            r,
-            overhead,
-            pct,
-            ..
+            r, overhead, pct, ..
         } => Some(SaveLineParts {
             lead: format!(
                 "按 {} Token 思考量，扣掉 {} Token 换语言说明，每次净省 ",
@@ -1204,7 +1199,11 @@ pub fn result_summary_text(evaluation: &Evaluation, generated_at: &str) -> Strin
         format!("节省判断：{}", story.text()),
         result_ratio_text(evaluation.effective_ratio),
         result_net_text(evaluation.savings.as_ref()),
-        format!("{}：{}", RESULT.suffix_label, prompt_suffix(&evaluation.routing)),
+        format!(
+            "{}：{}",
+            RESULT.suffix_label,
+            prompt_suffix(&evaluation.routing)
+        ),
         format!("{}：{}", RESULT.time_label, generated_at),
     ]
     .join("\n")
@@ -1329,7 +1328,11 @@ pub fn applicability(evaluation: &Evaluation) -> Applicability {
     }
     if s.switchable {
         return Applicability {
-            label: if builtin { "切换能省（参考）" } else { "切换能省" },
+            label: if builtin {
+                "切换能省（参考）"
+            } else {
+                "切换能省"
+            },
             tone: Tone::Ok,
         };
     }
@@ -1390,17 +1393,16 @@ pub fn savings_blocked_notice(evaluation: &Evaluation) -> String {
 
 pub fn threshold_text(evaluation: &Evaluation) -> String {
     let (tokens, pct) = match evaluation.profile.as_ref() {
-        Some(p) => (p.policy.switch_threshold_tokens, p.policy.switch_threshold_pct),
+        Some(p) => (
+            p.policy.switch_threshold_tokens,
+            p.policy.switch_threshold_pct,
+        ),
         None => (
             SWITCH_THRESHOLD_TOKENS_DEFAULT,
             SWITCH_THRESHOLD_PCT_DEFAULT,
         ),
     };
-    format!(
-        "max({}, {}% × R)",
-        js_num(tokens),
-        round_i(pct * 100.0)
-    )
+    format!("max({}, {}% × R)", js_num(tokens), round_i(pct * 100.0))
 }
 
 pub fn formula_lines(evaluation: &Evaluation) -> Vec<String> {
@@ -1511,8 +1513,7 @@ pub fn comparison_view(evaluation: &Evaluation) -> Option<ComparisonView> {
     }
 
     let cost = |l: Lang| if l == Lang::Zh { ratio } else { 1.0 };
-    let tokens_for =
-        |l: Lang| ((savings.r * cost(l)) / cost(savings.current)).round();
+    let tokens_for = |l: Lang| ((savings.r * cost(l)) / cost(savings.current)).round();
     let overhead = injection
         .filter(|i| i.state != InjectionState::Disabled)
         .map(|i| i.prompt_tokens + i.tag_tokens)
@@ -1580,7 +1581,11 @@ pub fn comparison_blocked_reason(evaluation: &Evaluation) -> String {
         .as_ref()
         .map(|p| p.measurement.method == ProfileSource::Builtin)
         .unwrap_or(false);
-    let who = if builtin { "内置参考数据" } else { "测量" };
+    let who = if builtin {
+        "内置参考数据"
+    } else {
+        "测量"
+    };
     if status.health == ProfileHealth::Stale {
         return format!(
             "{}已超 {} 天有效期，费用停用，没有三路对比。",
@@ -1725,7 +1730,10 @@ impl CalCopy {
     }
 
     pub fn repro_cmd(&self, model_id: &str) -> String {
-        format!("cargo run -p langbridge-cli -- calibrate --model {}", model_id)
+        format!(
+            "cargo run -p langbridge-cli -- calibrate --model {}",
+            model_id
+        )
     }
 
     pub fn repro_note(&self, name: &str, version: &str) -> String {
@@ -1767,18 +1775,13 @@ impl ProfileCopy {
 pub static PROFILE: std::sync::LazyLock<ProfileCopy> = std::sync::LazyLock::new(|| ProfileCopy {
     title: "参考与测量记录",
     migrate_chip: "已从 v2 迁移",
-    empty_notice: "还没有记录。点上方「载入参考数据」或「测一下」后会生成可复现的 profile.json，刷新仍保留。",
+    empty_notice:
+        "还没有记录。点上方「载入参考数据」或「测一下」后会生成可复现的 profile.json，刷新仍保留。",
     import_fail_title: "导入失败",
     import_fail_msg: "文件未通过画像校验，未写入本地存储。",
     read_fail: "读取文件失败",
-    expired_builtin: format!(
-        "参考数据已超过 {} 天，费用估算已停用",
-        PROFILE_MAX_AGE_DAYS
-    ),
-    expired_measured: format!(
-        "测量已超过 {} 天，费用结论已停用",
-        PROFILE_MAX_AGE_DAYS
-    ),
+    expired_builtin: format!("参考数据已超过 {} 天，费用估算已停用", PROFILE_MAX_AGE_DAYS),
+    expired_measured: format!("测量已超过 {} 天，费用结论已停用", PROFILE_MAX_AGE_DAYS),
     measured_at_note: "源设计字段名为 calibrated_at，v3 画像中为 measured_at",
     delete_confirm: "确认删除这条记录？",
     native_lang_label: "native_lang:",
@@ -1786,7 +1789,8 @@ pub static PROFILE: std::sync::LazyLock<ProfileCopy> = std::sync::LazyLock::new(
         "代理网关每 {} 次指令自动重校准（源设计 §5.2，Web 端不计数）",
         RECALIBRATE_EVERY
     ),
-    stale_builtin_notice: "这是公开 tokenizer 的真实计数，不是服务端账单；需要精确计费口径时请用 API 测量。",
+    stale_builtin_notice:
+        "这是公开 tokenizer 的真实计数，不是服务端账单；需要精确计费口径时请用 API 测量。",
     expired_notice_builtin: "参考数据太久远了：重新载入之前，不会给出费用估算。",
     expired_notice_measured: "测量太久远了：重新测一次之前，不会给出费用结论。",
 });
@@ -2046,12 +2050,7 @@ impl ProbeCopy {
     }
 
     pub fn log_fail(&self, lang_text_value: &str, n: f64, message: &str) -> String {
-        format!(
-            "{} N={} 失败：{}",
-            lang_text_value,
-            js_num(n),
-            message
-        )
+        format!("{} N={} 失败：{}", lang_text_value, js_num(n), message)
     }
 
     pub fn log_cancelled(&self, done: usize, total: usize) -> String {
@@ -2096,7 +2095,8 @@ impl StorageCopy {
 
 pub const STORAGE: StorageCopy = StorageCopy {
     unavailable: "浏览器存储不可用：画像与设置无法持久化",
-    profile_not_saved: "画像已生成，但浏览器存储已满或不可用：刷新后会丢失，请先导出画像或清理过长的输入。",
+    profile_not_saved:
+        "画像已生成，但浏览器存储已满或不可用：刷新后会丢失，请先导出画像或清理过长的输入。",
     profile_imported_not_saved: "画像已导入，但浏览器存储不可用（刷新后会丢失）",
 };
 
@@ -2237,4 +2237,3 @@ pub const FLOW: FlowCopy = FlowCopy {
     inject_stream_note: "流式请求不会注入标签，只保留语言指令，避免破坏流式解析。",
     inject_conflict_note: "如果你已经在系统提示里写了语言要求，这里会判为冲突并跳过注入。",
 };
-

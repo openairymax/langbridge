@@ -1,4 +1,4 @@
-//! 信号提取：纯本地计算，不调用模型。
+//! 信号提取：语言、任务类型与代码占比。
 
 use std::sync::OnceLock;
 
@@ -120,31 +120,67 @@ pub fn detect_language(raw: &str) -> LanguageDetection {
 }
 
 lazy_re!(code_fence, r"```");
-lazy_re!(code_kw, r"\b(function|def|class|import|export|return|async|await)\s+[\w$({]");
+lazy_re!(
+    code_kw,
+    r"\b(function|def|class|import|export|return|async|await)\s+[\w$({]"
+);
 lazy_re!(code_var, r"\b(const|let|var)\s+\w+\s*=");
 lazy_re!(code_arrow, r"=>\s*[{(]");
 lazy_re!(code_log, r"\b(console\.log|print)\s*\(");
 lazy_re!(code_include, r"#include\s*<");
-lazy_re!(code_sql, r"(?i)\b(SELECT|INSERT|UPDATE|DELETE)\b[\s\S]{0,40}\bFROM\b");
+lazy_re!(
+    code_sql,
+    r"(?i)\b(SELECT|INSERT|UPDATE|DELETE)\b[\s\S]{0,40}\bFROM\b"
+);
 lazy_re!(code_zh_fn, r"写(一)?(个|段)?(函数|脚本|程序|代码|算法)");
 lazy_re!(code_zh_sort, r"(快速|冒泡|归并|选择|插入)排序");
-lazy_re!(code_zh_build, r"(实现|写)(一)?(个|下)?(快排|二分|递归|爬虫|接口|组件|页面|服务)");
-lazy_re!(code_lang, r"(Python|Java(Script)?|TypeScript|C\+\+|Golang|Rust|SQL)\b");
+lazy_re!(
+    code_zh_build,
+    r"(实现|写)(一)?(个|下)?(快排|二分|递归|爬虫|接口|组件|页面|服务)"
+);
+lazy_re!(
+    code_lang,
+    r"(Python|Java(Script)?|TypeScript|C\+\+|Golang|Rust|SQL)\b"
+);
 
 lazy_re!(math_expr, r"[0-9]\s*[+\-*/^]\s*[0-9]");
-lazy_re!(math_en, r"(?i)\b(prove|solve|derivative|integral|matrix|prime)\b");
+lazy_re!(
+    math_en,
+    r"(?i)\b(prove|solve|derivative|integral|matrix|prime)\b"
+);
 lazy_re!(math_symbol, r"[∑∫√≠≤≥]");
-lazy_re!(math_zh, r"证明|求解|方程|微积分|导数|积分|整除|质数|素数|几何|概率");
-lazy_re!(math_count, r"[0-9]+\s*(个|次|只|条|人|数).{0,4}(等于|是|为)");
+lazy_re!(
+    math_zh,
+    r"证明|求解|方程|微积分|导数|积分|整除|质数|素数|几何|概率"
+);
+lazy_re!(
+    math_count,
+    r"[0-9]+\s*(个|次|只|条|人|数).{0,4}(等于|是|为)"
+);
 
-lazy_re!(culture_zh, r"成语|典故|诗词|唐诗|宋词|文言文|古文|对联|歇后语|俗语|诗经|论语|道德经");
+lazy_re!(
+    culture_zh,
+    r"成语|典故|诗词|唐诗|宋词|文言文|古文|对联|歇后语|俗语|诗经|论语|道德经"
+);
 lazy_re!(culture_book, r"红楼梦|三国演义|水浒传|西游记|史记|资治通鉴");
-lazy_re!(culture_write, r"仿写.{0,4}(古|诗)|写出.{0,4}诗|翻译.{0,4}文言");
+lazy_re!(
+    culture_write,
+    r"仿写.{0,4}(古|诗)|写出.{0,4}诗|翻译.{0,4}文言"
+);
 
-lazy_re!(policy_zh, r"政策|法规|法律|条例|规定|办法|细则|合规|监管|公文|红头文件");
-lazy_re!(policy_en, r"(?i)\b(policy|regulation|compliance|statute|ordinance)\b");
+lazy_re!(
+    policy_zh,
+    r"政策|法规|法律|条例|规定|办法|细则|合规|监管|公文|红头文件"
+);
+lazy_re!(
+    policy_en,
+    r"(?i)\b(policy|regulation|compliance|statute|ordinance)\b"
+);
 
-lazy_re!(hint_kw, r"\b(function|def|class|import|export|const|let|var)\b");
+lazy_re!(
+    hint_kw,
+    r"\b(function|def|class|import|export|const|let|var)\b"
+);
 lazy_re!(hint_semi, r"(?m)[;{}]\s*$");
 
 fn score(text: &str, patterns: &[(&Regex, u32)]) -> u32 {
@@ -213,11 +249,7 @@ pub fn detect_task(raw: &str) -> TaskDetection {
     );
     let culture = score(
         text,
-        &[
-            (culture_zh(), 3),
-            (culture_book(), 3),
-            (culture_write(), 3),
-        ],
+        &[(culture_zh(), 3), (culture_book(), 3), (culture_write(), 3)],
     );
     let policy = score(text, &[(policy_zh(), 3), (policy_en(), 3)]);
 

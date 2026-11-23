@@ -1,4 +1,4 @@
-//! 内置数据：空态参考表、首屏示例与校准样本。
+//! 内置数据：参考表、首屏示例与校准样本。
 
 use langbridge_core::evidence::{calibrate_from_evidence, list_evidence_models};
 use langbridge_core::profiles::get_model;
@@ -46,7 +46,11 @@ pub fn demo_model_id() -> Option<String> {
 }
 
 fn gap(ratio: f64) -> f64 {
-    if ratio >= 1.0 { ratio } else { 1.0 / ratio }
+    if ratio >= 1.0 {
+        ratio
+    } else {
+        1.0 / ratio
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

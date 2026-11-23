@@ -2,8 +2,8 @@
 
 use leptos::prelude::*;
 
-use crate::copy::{HERO, STEPS_NOTE, STEPS_TITLE, steps};
-use crate::state::{AppCtx, install_app_state};
+use crate::copy::{steps, HERO, STEPS_NOTE, STEPS_TITLE};
+use crate::state::{install_app_state, AppCtx};
 use crate::ui::ask::AskCard;
 use crate::ui::folds::Folds;
 use crate::ui::probe_card::ApiProbe;

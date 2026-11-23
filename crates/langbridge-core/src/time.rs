@@ -1,4 +1,4 @@
-//! 时间工具：解析 ISO 8601（Z 或带时区偏移），不引入额外依赖。
+//! 时间工具：ISO 8601 的解析与格式化。
 
 fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };

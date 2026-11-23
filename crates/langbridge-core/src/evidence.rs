@@ -1,4 +1,4 @@
-//! 内置证据与 API 探测的纯逻辑部分。
+//! 内置证据：离线校准结果与 API 探测的纯逻辑。
 
 use std::sync::OnceLock;
 
@@ -46,9 +46,7 @@ const EVIDENCE_JSON: &str = include_str!("../data/builtin-evidence.json");
 
 pub fn evidence() -> &'static EvidenceFile {
     static CELL: OnceLock<EvidenceFile> = OnceLock::new();
-    CELL.get_or_init(|| {
-        serde_json::from_str(EVIDENCE_JSON).expect("内置证据 JSON 应可解析")
-    })
+    CELL.get_or_init(|| serde_json::from_str(EVIDENCE_JSON).expect("内置证据 JSON 应可解析"))
 }
 
 pub fn evidence_version_ok() -> bool {
@@ -80,7 +78,11 @@ pub fn evidence_meta() -> EvidenceMeta {
 }
 
 pub fn list_evidence_models() -> Vec<String> {
-    evidence().datasets.iter().map(|d| d.model_id.clone()).collect()
+    evidence()
+        .datasets
+        .iter()
+        .map(|d| d.model_id.clone())
+        .collect()
 }
 
 pub fn has_evidence(model_id: &str) -> bool {
@@ -131,7 +133,7 @@ fn scheme_re() -> &'static Regex {
 
 fn host_of(raw: &str) -> String {
     let authority = raw
-        .split(|c| c == '/' || c == '?' || c == '#')
+        .split(['/', '?', '#'])
         .next()
         .unwrap_or("");
     if let Some(rest) = authority.strip_prefix('[') {
@@ -149,7 +151,11 @@ fn is_local_upstream_host(host: &str) -> bool {
         return true;
     }
     let parts: Vec<&str> = host.split('.').collect();
-    if parts.len() != 4 || parts.iter().any(|p| p.is_empty() || !p.chars().all(|c| c.is_ascii_digit())) {
+    if parts.len() != 4
+        || parts
+            .iter()
+            .any(|p| p.is_empty() || !p.chars().all(|c| c.is_ascii_digit()))
+    {
         return false;
     }
     let nums: Vec<u32> = parts.iter().filter_map(|p| p.parse().ok()).collect();
@@ -198,7 +204,11 @@ pub fn normalize_base(base_url: &str) -> String {
         url.set_path("/openai/v1/chat/completions");
         return url.to_string();
     }
-    let prefix = if path.is_empty() { "/v1" } else { path.as_str() };
+    let prefix = if path.is_empty() {
+        "/v1"
+    } else {
+        path.as_str()
+    };
     url.set_path(&format!("{}/chat/completions", prefix));
     url.to_string()
 }
@@ -274,7 +284,10 @@ pub fn classify_http(status: u16, server_message: &str) -> EngineError {
             } else {
                 EngineError::new(
                     ErrorCode::BadBaseUrl,
-                    format!("接口路径不存在，检查 Base URL（多数服务商需要 /v1）（HTTP 404）{}", detail),
+                    format!(
+                        "接口路径不存在，检查 Base URL（多数服务商需要 /v1）（HTTP 404）{}",
+                        detail
+                    ),
                 )
             }
         }
@@ -301,7 +314,10 @@ pub fn classify_http(status: u16, server_message: &str) -> EngineError {
 pub fn is_retryable(code: ErrorCode) -> bool {
     matches!(
         code,
-        ErrorCode::RateLimited | ErrorCode::ServerError | ErrorCode::NetworkError | ErrorCode::Timeout
+        ErrorCode::RateLimited
+            | ErrorCode::ServerError
+            | ErrorCode::NetworkError
+            | ErrorCode::Timeout
     )
 }
 

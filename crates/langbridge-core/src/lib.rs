@@ -1,4 +1,4 @@
-//! LangBridge 核心引擎：信号提取、校准、画像、净收益、路由、注入与输出后处理。
+//! 核心引擎：信号、校准、画像、净收益、路由、注入与输出后处理。
 
 pub mod calibrate;
 pub mod canonical;

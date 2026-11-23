@@ -1,4 +1,4 @@
-//! setup 子命令：用内置证据校准全部模型并写入本地画像，无需 API Key。
+//! setup 子命令：用内置证据校准全部模型并写入画像。
 
 use std::io::IsTerminal;
 
@@ -71,13 +71,7 @@ pub fn setup_command(args: &ParsedArgs) -> Result<i32, CliError> {
         );
     } else {
         for (id, ratio, path) in &written {
-            println!(
-                "{} {} · 比值 {:.4} · {}",
-                green("已校准"),
-                id,
-                ratio,
-                path
-            );
+            println!("{} {} · 比值 {:.4} · {}", green("已校准"), id, ratio, path);
         }
         for (id, msg) in &failed {
             eprintln!("失败 {}：{}", id, msg);

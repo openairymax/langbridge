@@ -1,4 +1,4 @@
-//! 画像的纯逻辑部分：过期判定、内置数据检查与由校准重建画像。
+//! 画像逻辑：过期判定、内置数据检查与重建。
 
 use serde_json::Value;
 
@@ -55,7 +55,11 @@ pub fn profile_from_calibration(
         model_id: model_id.to_string(),
         display_name: model_id.to_string(),
         family: family_of(model_id),
-        native_lang: infer_native_lang(model_id, Some(family_of(model_id)), Some(calibration.effective_ratio)),
+        native_lang: infer_native_lang(
+            model_id,
+            Some(family_of(model_id)),
+            Some(calibration.effective_ratio),
+        ),
         reasoning_capable: reasoning_capable(model_id),
         context_limit: 65536,
     });
@@ -184,10 +188,7 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
             for key in ["density_ratio", "effective_ratio"] {
                 match num(m.get(key)) {
                     Some(n) if (0.5..=2.5).contains(&n) => {}
-                    _ => errors.push(err(
-                        &format!("measurement.{}", key),
-                        "必须在 [0.5, 2.5] 内",
-                    )),
+                    _ => errors.push(err(&format!("measurement.{}", key), "必须在 [0.5, 2.5] 内")),
                 }
             }
             match num(m.get("r2")) {
@@ -217,10 +218,7 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
             match m.get("measured_at").and_then(Value::as_str) {
                 None => errors.push(err("measurement.measured_at", "必须为可解析的时间字符串")),
                 Some(raw) => match parse_iso_ms(raw) {
-                    None => errors.push(err(
-                        "measurement.measured_at",
-                        "必须为可解析的时间字符串",
-                    )),
+                    None => errors.push(err("measurement.measured_at", "必须为可解析的时间字符串")),
                     Some(t) if t > now_ms + 24 * 3600 * 1000 => errors.push(err(
                         "measurement.measured_at",
                         "不得晚于当前时间 24 小时以上",
@@ -265,21 +263,16 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
                         .filter(|o| o.get("lang").and_then(Value::as_str) == Some("en"))
                         .count();
                     if zh != 3 || en != 3 {
-                        errors.push(err(
-                            "measurement.observations",
-                            "中文与英文各需 3 条观测",
-                        ));
+                        errors.push(err("measurement.observations", "中文与英文各需 3 条观测"));
                     }
                 }
             }
             match m.get("tokenizer").and_then(Value::as_object) {
                 None => errors.push(err("measurement.tokenizer", "缺少 tokenizer")),
                 Some(tk) => {
-                    let ok = ["name", "version", "sha256"].iter().all(|k| {
-                        tk.get(*k)
-                            .map(|v| v.is_string())
-                            .unwrap_or(false)
-                    });
+                    let ok = ["name", "version", "sha256"]
+                        .iter()
+                        .all(|k| tk.get(*k).map(|v| v.is_string()).unwrap_or(false));
                     if !ok {
                         errors.push(err(
                             "measurement.tokenizer",
@@ -302,17 +295,12 @@ pub fn validate_profile(value: &Value, now_ms: i64) -> ParseProfileResult {
             }
             match (num(policy.get("ratio_high")), num(policy.get("ratio_low"))) {
                 (Some(high), Some(low)) if high > low => {}
-                (Some(_), Some(_)) => {
-                    errors.push(err("policy.ratio_high", "必须大于 ratio_low"))
-                }
+                (Some(_), Some(_)) => errors.push(err("policy.ratio_high", "必须大于 ratio_low")),
                 _ => errors.push(err("policy.ratio_high", "必须为数字")),
             }
             match num(policy.get("switch_threshold_tokens")) {
                 Some(n) if n >= 0.0 => {}
-                _ => errors.push(err(
-                    "policy.switch_threshold_tokens",
-                    "必须为非负数",
-                )),
+                _ => errors.push(err("policy.switch_threshold_tokens", "必须为非负数")),
             }
             match num(policy.get("switch_threshold_pct")) {
                 Some(n) if n >= 0.0 => {}
@@ -379,32 +367,18 @@ fn migrate_v2(value: &Value, now_ms: i64) -> ParseProfileResult {
     let mut observations: Vec<Observation> = Vec::new();
     for raw in obs {
         let Some(item) = raw.as_object() else {
-            return ParseProfileResult::fail(vec![err(
-                "observations",
-                "v2 观测字段不合法",
-            )]);
+            return ParseProfileResult::fail(vec![err("observations", "v2 观测字段不合法")]);
         };
         let lang = match item.get("lang").and_then(Value::as_str) {
             Some("zh") => crate::types::Lang::Zh,
             Some("en") => crate::types::Lang::En,
-            _ => {
-                return ParseProfileResult::fail(vec![err(
-                    "observations",
-                    "v2 观测字段不合法",
-                )])
-            }
+            _ => return ParseProfileResult::fail(vec![err("observations", "v2 观测字段不合法")]),
         };
         let Some(n) = num(item.get("n")).filter(|n| *n > 0.0) else {
-            return ParseProfileResult::fail(vec![err(
-                "observations",
-                "v2 观测字段不合法",
-            )]);
+            return ParseProfileResult::fail(vec![err("observations", "v2 观测字段不合法")]);
         };
         let Some(prompt_tokens) = num(item.get("prompt_tokens")).filter(|n| *n >= 0.0) else {
-            return ParseProfileResult::fail(vec![err(
-                "observations",
-                "v2 观测字段不合法",
-            )]);
+            return ParseProfileResult::fail(vec![err("observations", "v2 观测字段不合法")]);
         };
         let sample_id = item
             .get("sample_id")
@@ -442,7 +416,7 @@ fn migrate_v2(value: &Value, now_ms: i64) -> ParseProfileResult {
     ) {
         Ok(mut cal) => {
             let mut warnings = vec![Warning::ProbeDegraded];
-            warnings.extend(cal.warnings.drain(..));
+            warnings.append(&mut cal.warnings);
             cal.warnings = warnings;
             cal
         }
