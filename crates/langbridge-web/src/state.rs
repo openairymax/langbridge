@@ -508,12 +508,8 @@ impl AppCtx {
             s.profile = profile;
             s.r_override = None;
             s.calibration = CalibrationState {
-                status: if s.profile.is_some() {
-                    CalibrationStatus::Success
-                } else {
-                    CalibrationStatus::Idle
-                },
-                progress: if s.profile.is_some() { 1.0 } else { 0.0 },
+                status: CalibrationStatus::Idle,
+                progress: 0.0,
                 ..CalibrationState::default()
             };
             s.import_errors = None;
@@ -766,6 +762,9 @@ impl AppCtx {
                         });
                         return;
                     }
+                    if current.calibration.status != CalibrationStatus::Running {
+                        return;
+                    }
                     let hint = PROBE.hint(&crate::probe::code_str(error.code)).to_string();
                     state_signal.update(|s| {
                         s.calibration.status = CalibrationStatus::Error;
@@ -785,6 +784,7 @@ impl AppCtx {
             if s.calibration.status == CalibrationStatus::Running {
                 s.calibration.status = CalibrationStatus::Idle;
                 s.calibration.progress = 0.0;
+                s.calibration.target_model_id = None;
             }
         });
     }
@@ -823,8 +823,8 @@ impl AppCtx {
             s.profile = Some(profile);
             s.model_id = model_id;
             s.calibration = CalibrationState {
-                status: CalibrationStatus::Success,
-                progress: 1.0,
+                status: CalibrationStatus::Idle,
+                progress: 0.0,
                 ..CalibrationState::default()
             };
             s.import_errors = None;
@@ -972,15 +972,7 @@ pub fn create_initial_state() -> AppState {
         probe_base_url: prefs.probe_base_url.unwrap_or_default(),
         profile: profile.clone(),
         signals: Some(signals),
-        calibration: CalibrationState {
-            status: if profile.is_some() {
-                CalibrationStatus::Success
-            } else {
-                CalibrationStatus::Idle
-            },
-            progress: if profile.is_some() { 1.0 } else { 0.0 },
-            ..CalibrationState::default()
-        },
+        calibration: CalibrationState::default(),
         measured: load_measured(),
         ..AppState::default()
     }

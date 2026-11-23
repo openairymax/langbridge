@@ -582,10 +582,13 @@ fn AdvancedFold() -> impl IntoView {
             return;
         }
         copy_state.set(0);
-        let hook = Some(
-            std::rc::Rc::new(move |ok: bool| copy_state.set(if ok { 1 } else { 2 }))
-                as std::rc::Rc<dyn Fn(bool)>,
-        );
+        let hook = Some(std::rc::Rc::new(move |ok: bool| {
+            copy_state.set(if ok { 1 } else { 2 });
+            set_timeout(
+                move || copy_state.set(0),
+                std::time::Duration::from_millis(if ok { 1600 } else { 2600 }),
+            );
+        }) as std::rc::Rc<dyn Fn(bool)>);
         crate::io::spawn_copy(plan.system_prompt.clone(), hook);
     };
 

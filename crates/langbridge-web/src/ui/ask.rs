@@ -71,7 +71,22 @@ pub fn AskCard() -> impl IntoView {
 
     let commit_custom = move || {
         let value = custom_text.get_untracked().trim().to_string();
-        if value.is_empty() || value == ctx.state.get_untracked().model_id {
+        if value.is_empty() {
+            let id = ctx.state.get_untracked().model_id;
+            let listed = is_known(&id)
+                || ctx
+                    .state
+                    .get_untracked()
+                    .measured
+                    .iter()
+                    .any(|m| m.id == id);
+            if listed {
+                custom_mode.set(false);
+                custom_text.set(String::new());
+            }
+            return;
+        }
+        if value == ctx.state.get_untracked().model_id {
             return;
         }
         ctx.set_model(value);
@@ -279,6 +294,7 @@ pub fn AskCard() -> impl IntoView {
                                     let active = ctx.state.get().text == text;
                                     if active { "example example-active" } else { "example" }
                                 }
+                                aria-pressed=move || if ctx.state.get().text == text { "true" } else { "false" }
                                 title=hint
                                 on:click=move |_| {
                                     ctx.set_text(text.to_string());

@@ -67,12 +67,16 @@ pub fn ApiProbe() -> impl IntoView {
             .unwrap_or_default();
         if name == PROBE.provider_custom {
             endpoint_open.set(true);
+            api_key.set(String::new());
+            show_key.set(false);
             invalidate_check();
             return;
         }
         let Some(preset) = PROBE.presets.iter().find(|p| p.name == name) else {
             return;
         };
+        api_key.set(String::new());
+        show_key.set(false);
         ctx.set_probe_base_url(preset.base_url.to_string());
         model_id.set(preset.model_id.to_string());
         invalidate_check();
@@ -199,6 +203,7 @@ pub fn ApiProbe() -> impl IntoView {
                         <select
                             class="probe-select"
                             aria-label=PROBE.provider_aria
+                            disabled=move || running() || checking.get()
                             on:change=on_provider
                             prop:value=provider_value
                         >
@@ -220,6 +225,7 @@ pub fn ApiProbe() -> impl IntoView {
                                 class="key-toggle"
                                 aria-label=PROBE.key_toggle_aria
                                 aria-pressed=move || if show_key.get() { "true" } else { "false" }
+                                disabled=move || running() || checking.get()
                                 on:click=move |_| show_key.update(|v| *v = !*v)
                             >
                                 {move || if show_key.get() { PROBE.hide_key } else { PROBE.show_key }}
@@ -231,6 +237,7 @@ pub fn ApiProbe() -> impl IntoView {
                             spellcheck="false"
                             placeholder="sk-…"
                             aria-label=PROBE.api_key
+                            disabled=move || running() || checking.get()
                             prop:value=move || api_key.get()
                             on:input=move |ev| {
                                 api_key.set(event_target_value(&ev));
@@ -252,6 +259,7 @@ pub fn ApiProbe() -> impl IntoView {
                     <button
                         type="button"
                         class="btn btn-primary probe-run-btn"
+                        disabled=move || checking.get()
                         on:click=run
                     >
                         {move || {
@@ -286,6 +294,7 @@ pub fn ApiProbe() -> impl IntoView {
                     type="button"
                     class="probe-endpoint"
                     aria-expanded=move || if endpoint_open.get() { "true" } else { "false" }
+                    disabled=move || running() || checking.get()
                     on:click=on_endpoint_toggle
                 >
                     <span class="probe-endpoint-text">
@@ -301,6 +310,7 @@ pub fn ApiProbe() -> impl IntoView {
                         <span class="probe-label">{PROBE.base_url}</span>
                         <input
                             placeholder=PROBE.base_url_placeholder
+                            disabled=move || running() || checking.get()
                             prop:value=base_url
                             on:input=move |ev| {
                                 ctx.set_probe_base_url(event_target_value(&ev));
@@ -312,6 +322,7 @@ pub fn ApiProbe() -> impl IntoView {
                         <span class="probe-label">{PROBE.model_id}</span>
                         <input
                             placeholder="deepseek-reasoner"
+                            disabled=move || running() || checking.get()
                             prop:value=move || model_id.get()
                             on:input=move |ev| {
                                 model_id.set(event_target_value(&ev));
@@ -328,7 +339,7 @@ pub fn ApiProbe() -> impl IntoView {
                         .get()
                         .map(|field| {
                             view! {
-                                <p class="notice notice-warn" data-testid="probe-preflight" role="status">
+                                <p class="notice notice-warn" data-testid="probe-preflight" role="alert">
                                     {field}
                                 </p>
                             }

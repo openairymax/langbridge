@@ -524,6 +524,9 @@ textarea::-webkit-scrollbar-thumb:hover,
 
 .btn:disabled {
   cursor: not-allowed;
+  background: var(--sunken);
+  border-color: var(--line);
+  color: var(--ink-3);
 }
 
 /* 禁用态：灰底灰字，文字保持可读，不用整体透明度变淡 */
@@ -1906,6 +1909,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   font-size: var(--fs-small);
   line-height: var(--lh-body);
   color: var(--ink-2);
+  overflow-wrap: anywhere;
 }
 
 .probe-status-hint {
@@ -1956,6 +1960,7 @@ textarea::-webkit-scrollbar-thumb:hover,
   line-height: var(--lh-compact);
   font-variant-numeric: tabular-nums;
   color: var(--ink-2);
+  overflow-wrap: anywhere;
 }
 
 .probe-log-dot {
@@ -3107,6 +3112,11 @@ textarea::-webkit-scrollbar-thumb:hover,
 .file-label {
   position: relative;
   overflow: hidden;
+}
+
+.file-label:focus-within {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
 }
 
 .file-label input {
