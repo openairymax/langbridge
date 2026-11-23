@@ -1,4 +1,4 @@
-//! 四层路由：L1 硬规则、L2 模型能力、L3 输入对齐、L4 成本闸门。
+//! 四层路由：硬规则、模型能力、输入对齐与成本闸门。
 
 use crate::calibrate::{calibration_usable, MIN_CONFIDENCE};
 use crate::inject::{build_injection_plan, build_system_prompt, has_language_conflict, InjectionInput, PromptOptions};
