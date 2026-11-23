@@ -98,6 +98,7 @@ fn FilledResult() -> impl IntoView {
     let suffix = move || prompt_suffix(&evaluation().routing);
     let copied = RwSignal::new(0u8);
     let copied_suffix = RwSignal::new(0u8);
+    let download_state = RwSignal::new(0u8);
 
     let copy_all = {
         move |_| {
@@ -119,7 +120,9 @@ fn FilledResult() -> impl IntoView {
         let evaluation = ctx.evaluation();
         let generated = langbridge_core::time::iso_from_ms(langbridge_core::now_ms());
         let text = result_summary_text(&evaluation, &generated);
-        crate::io::download_text("langbridge-verdict.md", &text, "text/markdown");
+        let ok = crate::io::download_text("langbridge-verdict.md", &text, "text/markdown");
+        download_state.set(if ok { 1 } else { 2 });
+        set_timeout(move || download_state.set(0), if ok { 1600 } else { 2600 });
     };
 
     view! {
@@ -195,7 +198,11 @@ fn FilledResult() -> impl IntoView {
                     }}
                 </button>
                 <button type="button" class="btn btn-sm btn-ghost" on:click=download>
-                    {RESULT.download}
+                    {move || match download_state.get() {
+                        1 => RESULT.download_started,
+                        2 => RESULT.download_failed,
+                        _ => RESULT.download,
+                    }}
                 </button>
             </div>
 

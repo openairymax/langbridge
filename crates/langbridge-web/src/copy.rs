@@ -1121,6 +1121,8 @@ pub fn save_line_parts(story: &SavingsStory) -> Option<SaveLineParts> {
 pub struct ResultCopy {
     pub copy: &'static str,
     pub download: &'static str,
+    pub download_started: &'static str,
+    pub download_failed: &'static str,
     pub copied: &'static str,
     pub copy_failed: &'static str,
     pub brand: &'static str,
@@ -1142,6 +1144,8 @@ pub struct ResultCopy {
 pub const RESULT: ResultCopy = ResultCopy {
     copy: "复制整段结论",
     download: "下载结果卡",
+    download_started: "已开始下载",
+    download_failed: "下载失败，请改用复制",
     copied: "已复制",
     copy_failed: "复制失败，请手动选择",
     brand: "LangBridge",

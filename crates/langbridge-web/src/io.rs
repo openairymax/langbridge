@@ -123,30 +123,30 @@ pub fn reveal_verdict_if_stacked() {
     }
 }
 
-pub fn download_text(filename: &str, text: &str, mime: &str) {
+pub fn download_text(filename: &str, text: &str, mime: &str) -> bool {
     let Some(win) = window() else {
-        return;
+        return false;
     };
     let Some(doc) = win.document() else {
-        return;
+        return false;
     };
     let parts = js_sys::Array::new();
     parts.push(&JsValue::from_str(text));
     let bag = BlobPropertyBag::new();
     bag.set_type(&format!("{};charset=utf-8", mime));
     let Ok(blob) = Blob::new_with_str_sequence_and_options(&parts, &bag) else {
-        return;
+        return false;
     };
     let Ok(url) = Url::create_object_url_with_blob(&blob) else {
-        return;
+        return false;
     };
     let Some(el) = doc.create_element("a").ok() else {
         let _ = Url::revoke_object_url(&url);
-        return;
+        return false;
     };
     let Ok(a) = el.dyn_into::<HtmlAnchorElement>() else {
         let _ = Url::revoke_object_url(&url);
-        return;
+        return false;
     };
     a.set_href(&url);
     a.set_download(filename);
@@ -162,6 +162,7 @@ pub fn download_text(filename: &str, text: &str, mime: &str) {
         let _ = Url::revoke_object_url(&revoke_url);
     })
     .forget();
+    true
 }
 
 pub async fn read_file_text(file: &File) -> Result<String, String> {
