@@ -129,6 +129,7 @@ cargo test --workspace
 ## 关于
 
 - 源码仓库：<https://atomgit.com/openairymax/langbridge>
+- 镜像仓库：<https://github.com/spharx01/langbridge>
 - 在线体验：<https://langbridge.traesite.cn>
 - 许可证：Apache License 2.0，见 `LICENSE`
 
