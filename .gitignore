@@ -1,25 +1,35 @@
-# Rust 构建产物
-/target
-/dist
+# 策略：非必要不追踪。默认忽略全部，按白名单放行构建与发布所需的文件。
+# 新增文件类型时在此显式放行，避免构建产物、缓存与本机配置被误提交。
+*
+!*/
+!.gitignore
+!LICENSE
+!README.md
+!Cargo.toml
+!Cargo.lock
 
-# 日志
-logs
+# 源码、构建配置与静态资源
+!**/*.rs
+!**/*.toml
+!**/*.css
+!**/*.html
+!**/*.svg
+!**/*.json
+!**/*.woff2
+!**/*.woff
+
+# 白名单之后重新排除生成物、缓存与本机文件
+/target/
+/dist/
+/trunk-dist/
+node_modules/
+logs/
 *.log
-
-# 本机环境与密钥
-*.local
 .env
 .env.*
+*.local
 *.pem
 *.key
-
-# 编辑器目录与文件
-.vscode/*
-!.vscode/extensions.json
-.idea
 .DS_Store
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+.vscode/
+.idea/
